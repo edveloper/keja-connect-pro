@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { BottomNav } from "@/components/layout/BottomNav";
 import Dashboard from "./pages/Dashboard";
 import Properties from "./pages/Properties";
+import Tenants from "./pages/Tenants";
 import Reconcile from "./pages/Reconcile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -22,6 +23,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/properties" element={<Properties />} />
+            <Route path="/tenants" element={<Tenants />} />
             <Route path="/reconcile" element={<Reconcile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />

@@ -1,10 +1,11 @@
-import { Home, Building2, FileText, Settings } from "lucide-react";
+import { Home, Building2, Users, FileText, Settings } from "lucide-react";
 import { NavLink as RouterNavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { to: "/", icon: Home, label: "Dashboard" },
+  { to: "/", icon: Home, label: "Home" },
   { to: "/properties", icon: Building2, label: "Properties" },
+  { to: "/tenants", icon: Users, label: "Tenants" },
   { to: "/reconcile", icon: FileText, label: "Reconcile" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
@@ -19,7 +20,7 @@ export function BottomNav() {
             to={item.to}
             end={item.to === "/"}
             className={({ isActive }) => cn(
-              "flex flex-col items-center justify-center gap-1 px-4 py-2 transition-colors",
+              "flex flex-col items-center justify-center gap-0.5 px-2 py-2 transition-colors min-w-0",
               isActive ? "text-nav-active" : "text-nav-foreground"
             )}
           >
@@ -27,13 +28,13 @@ export function BottomNav() {
               <>
                 <item.icon
                   className={cn(
-                    "h-5 w-5 transition-all",
+                    "h-5 w-5 transition-all flex-shrink-0",
                     isActive && "scale-110"
                   )}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 <span className={cn(
-                  "text-xs font-medium",
+                  "text-[10px] font-medium truncate",
                   isActive && "font-semibold"
                 )}>
                   {item.label}

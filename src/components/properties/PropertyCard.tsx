@@ -27,7 +27,7 @@ interface PropertyCardProps {
   property: Property;
   units: Unit[];
   tenantCounts: Record<string, number>;
-  onAddUnit: (propertyId: string, propertyName: string) => void;
+  onAddUnit: (propertyId: string, propertyName: string, numberingStyle?: string) => void;
   onDeleteUnit: (unitId: string) => void;
   onDeleteProperty: (propertyId: string) => void;
   index: number;
@@ -100,7 +100,7 @@ export function PropertyCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => onAddUnit(property.id, property.name)}
+                  onClick={() => onAddUnit(property.id, property.name, property.numbering_style)}
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Add Unit

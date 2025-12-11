@@ -17,11 +17,20 @@ export function useProperties() {
   });
 }
 
+export type NumberingStyle = 'numbers' | 'letters' | 'block_unit' | 'floor_unit';
+
+export const NUMBERING_STYLES: { value: NumberingStyle; label: string; example: string; hint: string }[] = [
+  { value: 'numbers', label: 'Numbers', example: '1, 2, 3...', hint: 'Enter a number (e.g., 1, 2, 3)' },
+  { value: 'letters', label: 'Letters', example: 'A, B, C...', hint: 'Enter a letter (e.g., A, B, C)' },
+  { value: 'block_unit', label: 'Block + Unit', example: 'A1, A2, B1, B2...', hint: 'Enter block letter + unit number (e.g., A1, B2)' },
+  { value: 'floor_unit', label: 'Floor + Unit', example: '1A, 1B, 2A, 2B...', hint: 'Enter floor number + unit letter (e.g., 1A, 2B)' },
+];
+
 export function useCreateProperty() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (property: { name: string; address?: string }) => {
+    mutationFn: async (property: { name: string; address?: string; numbering_style?: NumberingStyle }) => {
       const { data, error } = await supabase
         .from('properties')
         .insert(property)

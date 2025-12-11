@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PropertyForm } from "@/components/properties/PropertyForm";
 import { UnitForm } from "@/components/properties/UnitForm";
 import { PropertyCard } from "@/components/properties/PropertyCard";
-import { useProperties, useCreateProperty, useDeleteProperty } from "@/hooks/useProperties";
+import { useProperties, useCreateProperty, useDeleteProperty, NumberingStyle } from "@/hooks/useProperties";
 import { useUnits, useCreateUnit, useDeleteUnit } from "@/hooks/useUnits";
 import { useTenants } from "@/hooks/useTenants";
 import { Plus, Building2 } from "lucide-react";
@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Properties() {
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
-  const [addUnitTarget, setAddUnitTarget] = useState<{ id: string; name: string } | null>(null);
+  const [addUnitTarget, setAddUnitTarget] = useState<{ id: string; name: string; numberingStyle?: string } | null>(null);
 
   const { data: properties, isLoading: propertiesLoading } = useProperties();
   const { data: units, isLoading: unitsLoading } = useUnits();
@@ -31,7 +31,7 @@ export default function Properties() {
     }
   });
 
-  const handleAddProperty = (data: { name: string; address?: string }) => {
+  const handleAddProperty = (data: { name: string; address?: string; numbering_style: NumberingStyle }) => {
     createProperty.mutate(data, {
       onSuccess: () => setIsAddPropertyOpen(false),
     });
@@ -79,7 +79,7 @@ export default function Properties() {
               property={property}
               units={units || []}
               tenantCounts={tenantCounts}
-              onAddUnit={(id, name) => setAddUnitTarget({ id, name })}
+              onAddUnit={(id, name, numberingStyle) => setAddUnitTarget({ id, name, numberingStyle })}
               onDeleteUnit={(unitId) => deleteUnit.mutate(unitId)}
               onDeleteProperty={(propertyId) => deleteProperty.mutate(propertyId)}
               index={index}
@@ -102,6 +102,7 @@ export default function Properties() {
           onSubmit={handleAddUnit}
           propertyId={addUnitTarget.id}
           propertyName={addUnitTarget.name}
+          numberingStyle={addUnitTarget.numberingStyle as NumberingStyle}
           isLoading={createUnit.isPending}
         />
       )}

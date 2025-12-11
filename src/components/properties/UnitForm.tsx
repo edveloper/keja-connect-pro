@@ -1,0 +1,62 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+interface UnitFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: { unit_number: string; property_id: string }) => void;
+  propertyId: string;
+  propertyName: string;
+  isLoading?: boolean;
+}
+
+export function UnitForm({
+  open,
+  onOpenChange,
+  onSubmit,
+  propertyId,
+  propertyName,
+  isLoading,
+}: UnitFormProps) {
+  const [unitNumber, setUnitNumber] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unitNumber.trim()) return;
+    onSubmit({ unit_number: unitNumber.trim(), property_id: propertyId });
+    setUnitNumber("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm mx-4">
+        <DialogHeader>
+          <DialogTitle>Add Unit to {propertyName}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label htmlFor="unit-number">Unit Number *</Label>
+            <Input
+              id="unit-number"
+              placeholder="e.g., A1, 101, Ground Floor"
+              value={unitNumber}
+              onChange={(e) => setUnitNumber(e.target.value)}
+              required
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={isLoading || !unitNumber.trim()}>
+            {isLoading ? "Adding..." : "Add Unit"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

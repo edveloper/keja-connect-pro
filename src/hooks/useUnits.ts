@@ -45,3 +45,26 @@ export function useCreateUnit() {
     },
   });
 }
+
+export function useDeleteUnit() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (unitId: string) => {
+      const { error } = await supabase
+        .from('units')
+        .delete()
+        .eq('id', unitId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      toast({ title: 'Success', description: 'Unit deleted successfully' });
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+}

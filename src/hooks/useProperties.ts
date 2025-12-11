@@ -40,3 +40,26 @@ export function useCreateProperty() {
     },
   });
 }
+
+export function useDeleteProperty() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (propertyId: string) => {
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', propertyId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      toast({ title: 'Success', description: 'Property deleted successfully' });
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+}

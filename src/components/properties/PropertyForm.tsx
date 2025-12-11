@@ -8,13 +8,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { NUMBERING_STYLES, NumberingStyle } from "@/hooks/useProperties";
 
 interface PropertyFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: { name: string; address?: string }) => void;
+  onSubmit: (data: { name: string; address?: string; numbering_style: NumberingStyle }) => void;
   isLoading?: boolean;
-  defaultValues?: { name: string; address?: string };
+  defaultValues?: { name: string; address?: string; numbering_style?: NumberingStyle };
   title?: string;
 }
 
@@ -28,13 +36,21 @@ export function PropertyForm({
 }: PropertyFormProps) {
   const [name, setName] = useState(defaultValues?.name || "");
   const [address, setAddress] = useState(defaultValues?.address || "");
+  const [numberingStyle, setNumberingStyle] = useState<NumberingStyle>(
+    defaultValues?.numbering_style || "numbers"
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSubmit({ name: name.trim(), address: address.trim() || undefined });
+    onSubmit({
+      name: name.trim(),
+      address: address.trim() || undefined,
+      numbering_style: numberingStyle,
+    });
     setName("");
     setAddress("");
+    setNumberingStyle("numbers");
   };
 
   return (
@@ -62,6 +78,24 @@ export function PropertyForm({
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="numbering-style">Unit Numbering Style *</Label>
+            <Select value={numberingStyle} onValueChange={(v) => setNumberingStyle(v as NumberingStyle)}>
+              <SelectTrigger id="numbering-style">
+                <SelectValue placeholder="Select numbering style" />
+              </SelectTrigger>
+              <SelectContent>
+                {NUMBERING_STYLES.map((style) => (
+                  <SelectItem key={style.value} value={style.value}>
+                    <div className="flex flex-col items-start">
+                      <span>{style.label}</span>
+                      <span className="text-xs text-muted-foreground">{style.example}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading || !name.trim()}>
             {isLoading ? "Saving..." : "Save Property"}

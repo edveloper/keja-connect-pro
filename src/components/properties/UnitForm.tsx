@@ -7,7 +7,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import { NUMBERING_STYLES, NumberingStyle } from "@/hooks/useProperties";
 
 interface UnitFormProps {
   open: boolean;
@@ -15,6 +17,7 @@ interface UnitFormProps {
   onSubmit: (data: { unit_number: string; property_id: string }) => void;
   propertyId: string;
   propertyName: string;
+  numberingStyle?: NumberingStyle;
   isLoading?: boolean;
 }
 
@@ -24,9 +27,12 @@ export function UnitForm({
   onSubmit,
   propertyId,
   propertyName,
+  numberingStyle = "numbers",
   isLoading,
 }: UnitFormProps) {
   const [unitNumber, setUnitNumber] = useState("");
+
+  const styleInfo = NUMBERING_STYLES.find((s) => s.value === numberingStyle);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,13 +46,18 @@ export function UnitForm({
       <DialogContent className="max-w-sm mx-4">
         <DialogHeader>
           <DialogTitle>Add Unit to {propertyName}</DialogTitle>
+          {styleInfo && (
+            <DialogDescription className="text-sm">
+              Format: <span className="font-medium">{styleInfo.example}</span>
+            </DialogDescription>
+          )}
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label htmlFor="unit-number">Unit Number *</Label>
             <Input
               id="unit-number"
-              placeholder="e.g., A1, 101, Ground Floor"
+              placeholder={styleInfo?.hint || "e.g., A1, 101"}
               value={unitNumber}
               onChange={(e) => setUnitNumber(e.target.value)}
               required

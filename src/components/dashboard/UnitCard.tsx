@@ -37,7 +37,7 @@ export function UnitCard({
           </div>
           
           {isVacant ? (
-            <p className="text-sm text-muted-foreground italic">Vacant unit</p>
+            <p className="text-sm text-muted-foreground italic">Available for rent</p>
           ) : (
             <div className="space-y-1.5 mt-2">
               <div className="flex items-center gap-2 text-sm text-foreground">
@@ -60,9 +60,7 @@ export function UnitCard({
           )}
         </div>
         
-        {!isVacant && (
-          <StatusBadge status={isPaid ? "paid" : "arrears"} />
-        )}
+        <StatusBadge status={isVacant ? "vacant" : isPaid ? "paid" : "arrears"} />
       </div>
     </Card>
   );

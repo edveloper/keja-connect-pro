@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
-import { PropertyForm } from "@/components/properties/PropertyForm";
+import { PropertyForm, generateUnitNumbers } from "@/components/properties/PropertyForm";
 import { UnitForm } from "@/components/properties/UnitForm";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { useProperties, useCreateProperty, useDeleteProperty, NumberingStyle } from "@/hooks/useProperties";
-import { useUnits, useCreateUnit, useDeleteUnit } from "@/hooks/useUnits";
+import { useUnits, useCreateUnit, useDeleteUnit, useBulkCreateUnits } from "@/hooks/useUnits";
 import { useTenants } from "@/hooks/useTenants";
 import { Plus, Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +21,7 @@ export default function Properties() {
   const createProperty = useCreateProperty();
   const deleteProperty = useDeleteProperty();
   const createUnit = useCreateUnit();
+  const bulkCreateUnits = useBulkCreateUnits();
   const deleteUnit = useDeleteUnit();
 
   // Calculate tenant counts per unit
@@ -31,10 +32,26 @@ export default function Properties() {
     }
   });
 
-  const handleAddProperty = (data: { name: string; address?: string; numbering_style: NumberingStyle }) => {
-    createProperty.mutate(data, {
-      onSuccess: () => setIsAddPropertyOpen(false),
-    });
+  const handleAddProperty = (data: { name: string; address?: string; numbering_style: NumberingStyle; unit_count?: number }) => {
+    createProperty.mutate(
+      { name: data.name, address: data.address, numbering_style: data.numbering_style },
+      {
+        onSuccess: (newProperty) => {
+          if (data.unit_count && data.unit_count > 0) {
+            const unitNumbers = generateUnitNumbers(data.numbering_style, data.unit_count);
+            const unitsToCreate = unitNumbers.map((unit_number) => ({
+              property_id: newProperty.id,
+              unit_number,
+            }));
+            bulkCreateUnits.mutate(unitsToCreate, {
+              onSuccess: () => setIsAddPropertyOpen(false),
+            });
+          } else {
+            setIsAddPropertyOpen(false);
+          }
+        },
+      }
+    );
   };
 
   const handleAddUnit = (data: { unit_number: string; property_id: string }) => {
@@ -44,6 +61,7 @@ export default function Properties() {
   };
 
   const isLoading = propertiesLoading || unitsLoading;
+  const isCreating = createProperty.isPending || bulkCreateUnits.isPending;
 
   return (
     <PageContainer title="Properties" subtitle="Manage your properties and units">
@@ -92,7 +110,7 @@ export default function Properties() {
         open={isAddPropertyOpen}
         onOpenChange={setIsAddPropertyOpen}
         onSubmit={handleAddProperty}
-        isLoading={createProperty.isPending}
+        isLoading={isCreating}
       />
 
       {addUnitTarget && (

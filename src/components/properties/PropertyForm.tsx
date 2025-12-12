@@ -20,10 +20,53 @@ import { NUMBERING_STYLES, NumberingStyle } from "@/hooks/useProperties";
 interface PropertyFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: { name: string; address?: string; numbering_style: NumberingStyle }) => void;
+  onSubmit: (data: { name: string; address?: string; numbering_style: NumberingStyle; unit_count?: number }) => void;
   isLoading?: boolean;
   defaultValues?: { name: string; address?: string; numbering_style?: NumberingStyle };
   title?: string;
+}
+
+// Generate unit numbers based on numbering style
+export function generateUnitNumbers(style: NumberingStyle, count: number): string[] {
+  const units: string[] = [];
+  
+  for (let i = 1; i <= count; i++) {
+    switch (style) {
+      case 'numbers':
+        units.push(String(i));
+        break;
+      case 'letters':
+        // A, B, C, ... Z, AA, AB, ...
+        units.push(numberToLetters(i));
+        break;
+      case 'block_unit':
+        // A1, A2, A3, ... B1, B2, ...
+        const blockIndex = Math.ceil(i / 10);
+        const unitInBlock = ((i - 1) % 10) + 1;
+        units.push(`${numberToLetters(blockIndex)}${unitInBlock}`);
+        break;
+      case 'floor_unit':
+        // 1A, 1B, ... 2A, 2B, ...
+        const floorNum = Math.ceil(i / 4);
+        const unitOnFloor = ((i - 1) % 4) + 1;
+        units.push(`${floorNum}${numberToLetters(unitOnFloor)}`);
+        break;
+      default:
+        units.push(String(i));
+    }
+  }
+  
+  return units;
+}
+
+function numberToLetters(n: number): string {
+  let result = '';
+  while (n > 0) {
+    n--;
+    result = String.fromCharCode(65 + (n % 26)) + result;
+    n = Math.floor(n / 26);
+  }
+  return result;
 }
 
 export function PropertyForm({
@@ -39,19 +82,27 @@ export function PropertyForm({
   const [numberingStyle, setNumberingStyle] = useState<NumberingStyle>(
     defaultValues?.numbering_style || "numbers"
   );
+  const [unitCount, setUnitCount] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    const count = unitCount ? parseInt(unitCount, 10) : undefined;
     onSubmit({
       name: name.trim(),
       address: address.trim() || undefined,
       numbering_style: numberingStyle,
+      unit_count: count && count > 0 ? count : undefined,
     });
     setName("");
     setAddress("");
     setNumberingStyle("numbers");
+    setUnitCount("");
   };
+
+  const previewUnits = unitCount && parseInt(unitCount, 10) > 0 
+    ? generateUnitNumbers(numberingStyle, Math.min(parseInt(unitCount, 10), 5))
+    : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,6 +147,24 @@ export function PropertyForm({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="unit-count">Number of Units (Optional)</Label>
+            <Input
+              id="unit-count"
+              type="number"
+              min="0"
+              max="100"
+              placeholder="e.g., 10"
+              value={unitCount}
+              onChange={(e) => setUnitCount(e.target.value)}
+            />
+            {previewUnits.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Preview: {previewUnits.join(", ")}
+                {parseInt(unitCount, 10) > 5 && "..."}
+              </p>
+            )}
           </div>
           <Button type="submit" className="w-full" disabled={isLoading || !name.trim()}>
             {isLoading ? "Saving..." : "Save Property"}

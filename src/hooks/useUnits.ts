@@ -46,6 +46,29 @@ export function useCreateUnit() {
   });
 }
 
+export function useBulkCreateUnits() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (units: { property_id: string; unit_number: string }[]) => {
+      const { data, error } = await supabase
+        .from('units')
+        .insert(units)
+        .select();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      toast({ title: 'Success', description: `${data.length} units created successfully` });
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
 export function useDeleteUnit() {
   const queryClient = useQueryClient();
   

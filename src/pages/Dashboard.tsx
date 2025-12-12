@@ -9,18 +9,17 @@ export default function Dashboard() {
   const { data, isLoading } = useDashboardData();
   const currentMonth = new Date().toLocaleDateString("en-KE", { month: "long", year: "numeric" });
 
-  // Sort: arrears first, then paid, then vacant
+  // Sort: arrears first, then partial, then paid, then vacant
   const sortedUnits = [...(data?.units || [])].sort((a, b) => {
     const aHasTenant = !!a.tenant_id;
     const bHasTenant = !!b.tenant_id;
-    const aIsPaid = a.current_month_paid;
-    const bIsPaid = b.current_month_paid;
+    const statusOrder = { unpaid: 0, partial: 1, paid: 2, overpaid: 3 };
+    const aOrder = aHasTenant ? statusOrder[a.payment_status] : 4;
+    const bOrder = bHasTenant ? statusOrder[b.payment_status] : 4;
 
     if (!aHasTenant && bHasTenant) return 1;
     if (aHasTenant && !bHasTenant) return -1;
-    if (!aIsPaid && bIsPaid) return -1;
-    if (aIsPaid && !bIsPaid) return 1;
-    return 0;
+    return aOrder - bOrder;
   });
 
   const stats = data?.stats || {
@@ -99,7 +98,9 @@ export default function Dashboard() {
                 tenantName={unit.tenant_name || undefined}
                 tenantPhone={unit.tenant_phone || undefined}
                 rentAmount={unit.rent_amount || undefined}
-                isPaid={unit.current_month_paid}
+                paymentStatus={unit.payment_status}
+                amountPaid={unit.amount_paid}
+                balance={unit.balance}
               />
             </div>
           ))

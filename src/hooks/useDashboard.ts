@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export type PaymentStatus = 'paid' | 'partial' | 'unpaid' | 'overpaid';
+
 export interface DashboardUnit {
   id: string;
   unit_number: string;
@@ -10,7 +12,9 @@ export interface DashboardUnit {
   tenant_name: string | null;
   tenant_phone: string | null;
   rent_amount: number | null;
-  current_month_paid: boolean;
+  payment_status: PaymentStatus;
+  amount_paid: number;
+  balance: number;
 }
 
 export interface DashboardStats {
@@ -50,12 +54,28 @@ export function useDashboardData() {
 
       if (paymentsError) throw paymentsError;
 
-      // Map tenant IDs that have paid this month
-      const paidTenantIds = new Set(payments?.map(p => p.tenant_id) || []);
+      // Calculate payment totals per tenant
+      const tenantPayments = new Map<string, number>();
+      (payments || []).forEach(p => {
+        const current = tenantPayments.get(p.tenant_id) || 0;
+        tenantPayments.set(p.tenant_id, current + p.amount);
+      });
+
+      // Helper to calculate payment status
+      const getPaymentStatus = (rentAmount: number, amountPaid: number): PaymentStatus => {
+        if (amountPaid === 0) return 'unpaid';
+        if (amountPaid < rentAmount) return 'partial';
+        if (amountPaid > rentAmount) return 'overpaid';
+        return 'paid';
+      };
 
       // Build dashboard units
       const dashboardUnits: DashboardUnit[] = (units || []).map(unit => {
         const tenant = tenants?.find(t => t.unit_id === unit.id);
+        const rentAmount = tenant?.rent_amount || 0;
+        const amountPaid = tenant ? (tenantPayments.get(tenant.id) || 0) : 0;
+        const balance = rentAmount - amountPaid;
+        
         return {
           id: unit.id,
           unit_number: unit.unit_number,
@@ -65,13 +85,15 @@ export function useDashboardData() {
           tenant_name: tenant?.name || null,
           tenant_phone: tenant?.phone || null,
           rent_amount: tenant?.rent_amount || null,
-          current_month_paid: tenant ? paidTenantIds.has(tenant.id) : false,
+          payment_status: tenant ? getPaymentStatus(rentAmount, amountPaid) : 'unpaid',
+          amount_paid: amountPaid,
+          balance,
         };
       });
 
       // Calculate stats
       const occupiedUnits = dashboardUnits.filter(u => u.tenant_id);
-      const paidUnits = occupiedUnits.filter(u => u.current_month_paid);
+      const paidUnits = occupiedUnits.filter(u => u.payment_status === 'paid' || u.payment_status === 'overpaid');
       const totalCollected = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
 
       const stats: DashboardStats = {

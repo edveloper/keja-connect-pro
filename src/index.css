@@ -37,6 +37,10 @@
     --success: 145 85% 42%;
     --success-foreground: 0 0% 100%;
 
+    /* Warning - Amber for partial payments */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 8%;
+
     /* Arrears/Alert - Bold red */
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -86,6 +90,9 @@
 
     --success: 145 80% 50%;
     --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 8%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;

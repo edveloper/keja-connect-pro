@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { User, Phone, Banknote } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PaymentStatus } from "@/hooks/useDashboard";
 
 interface UnitCardProps {
   unitNumber: string;
@@ -9,7 +10,9 @@ interface UnitCardProps {
   tenantName?: string;
   tenantPhone?: string;
   rentAmount?: number;
-  isPaid: boolean;
+  paymentStatus: PaymentStatus;
+  amountPaid?: number;
+  balance?: number;
   className?: string;
 }
 
@@ -19,10 +22,19 @@ export function UnitCard({
   tenantName,
   tenantPhone,
   rentAmount,
-  isPaid,
+  paymentStatus,
+  amountPaid = 0,
+  balance = 0,
   className,
 }: UnitCardProps) {
   const isVacant = !tenantName;
+
+  const getStatusForBadge = () => {
+    if (isVacant) return "vacant";
+    if (paymentStatus === "paid" || paymentStatus === "overpaid") return "paid";
+    if (paymentStatus === "partial") return "partial";
+    return "arrears";
+  };
   
   return (
     <Card className={cn(
@@ -54,13 +66,23 @@ export function UnitCard({
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <Banknote className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <span>KES {rentAmount.toLocaleString()}</span>
+                  {paymentStatus === "partial" && (
+                    <span className="text-warning text-xs">
+                      (KES {balance.toLocaleString()} owed)
+                    </span>
+                  )}
+                  {paymentStatus === "overpaid" && (
+                    <span className="text-success text-xs">
+                      (+KES {Math.abs(balance).toLocaleString()} credit)
+                    </span>
+                  )}
                 </div>
               )}
             </div>
           )}
         </div>
         
-        <StatusBadge status={isVacant ? "vacant" : isPaid ? "paid" : "arrears"} />
+        <StatusBadge status={getStatusForBadge()} />
       </div>
     </Card>
   );

@@ -1,4 +1,4 @@
-import { Home, Building2, Users, FileText, Settings } from "lucide-react";
+import { Home, Building2, Users, FileText, Wallet } from "lucide-react";
 import { NavLink as RouterNavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -6,8 +6,8 @@ const navItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/properties", icon: Building2, label: "Properties" },
   { to: "/tenants", icon: Users, label: "Tenants" },
+  { to: "/expenses", icon: Wallet, label: "Expenses" },
   { to: "/reconcile", icon: FileText, label: "Reconcile" },
-  { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
 export function BottomNav() {

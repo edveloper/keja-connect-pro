@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      expense_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_preset: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_preset?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_preset?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category_id: string
+          created_at: string
+          description: string | null
+          expense_date: string
+          expense_month: string
+          id: string
+          property_id: string
+          unit_id: string | null
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          created_at?: string
+          description?: string | null
+          expense_date?: string
+          expense_month: string
+          id?: string
+          property_id: string
+          unit_id?: string | null
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          created_at?: string
+          description?: string | null
+          expense_date?: string
+          expense_month?: string
+          id?: string
+          property_id?: string
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number

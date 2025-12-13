@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import Dashboard from "./pages/Dashboard";
 import Properties from "./pages/Properties";
 import Tenants from "./pages/Tenants";
+import Expenses from "./pages/Expenses";
 import Reconcile from "./pages/Reconcile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/" element={<Dashboard />} />
             <Route path="/properties" element={<Properties />} />
             <Route path="/tenants" element={<Tenants />} />
+            <Route path="/expenses" element={<Expenses />} />
             <Route path="/reconcile" element={<Reconcile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />

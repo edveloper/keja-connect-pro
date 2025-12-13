@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
-import { PropertyForm, generateUnitNumbers } from "@/components/properties/PropertyForm";
+import { PropertyForm, generateUnitNumbers, BlockConfig } from "@/components/properties/PropertyForm";
 import { UnitForm } from "@/components/properties/UnitForm";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { useProperties, useCreateProperty, useDeleteProperty, NumberingStyle } from "@/hooks/useProperties";
@@ -32,13 +32,19 @@ export default function Properties() {
     }
   });
 
-  const handleAddProperty = (data: { name: string; address?: string; numbering_style: NumberingStyle; unit_count?: number }) => {
+  const handleAddProperty = (data: { 
+    name: string; 
+    address?: string; 
+    numbering_style: NumberingStyle; 
+    unit_count?: number;
+    block_configs?: BlockConfig[];
+  }) => {
     createProperty.mutate(
       { name: data.name, address: data.address, numbering_style: data.numbering_style },
       {
         onSuccess: (newProperty) => {
           if (data.unit_count && data.unit_count > 0) {
-            const unitNumbers = generateUnitNumbers(data.numbering_style, data.unit_count);
+            const unitNumbers = generateUnitNumbers(data.numbering_style, data.unit_count, data.block_configs);
             const unitsToCreate = unitNumbers.map((unit_number) => ({
               property_id: newProperty.id,
               unit_number,

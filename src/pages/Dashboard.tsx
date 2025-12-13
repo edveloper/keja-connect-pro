@@ -2,11 +2,13 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { UnitCard } from "@/components/dashboard/UnitCard";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { useDashboardData } from "@/hooks/useDashboard";
-import { Building2, CheckCircle2, AlertTriangle, Banknote } from "lucide-react";
+import { useTotalExpenses } from "@/hooks/useExpenses";
+import { Building2, CheckCircle2, AlertTriangle, Banknote, Wallet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
   const { data, isLoading } = useDashboardData();
+  const { data: totalExpenses, isLoading: expensesLoading } = useTotalExpenses();
   const currentMonth = new Date().toLocaleDateString("en-KE", { month: "long", year: "numeric" });
 
   // Sort: arrears first, then partial, then paid, then vacant
@@ -34,12 +36,13 @@ export default function Dashboard() {
     <PageContainer title="Dashboard" subtitle={currentMonth}>
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        {isLoading ? (
+        {isLoading || expensesLoading ? (
           <>
             <Skeleton className="h-20 rounded-xl" />
             <Skeleton className="h-20 rounded-xl" />
             <Skeleton className="h-20 rounded-xl" />
             <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-20 rounded-xl col-span-2" />
           </>
         ) : (
           <>
@@ -66,6 +69,14 @@ export default function Dashboard() {
               icon={AlertTriangle}
               variant={stats.arrearsUnits > 0 ? "danger" : "default"}
             />
+            <div className="col-span-2">
+              <StatsCard
+                label="Expenses"
+                value={`KES ${((totalExpenses || 0) / 1000).toFixed(0)}K`}
+                icon={Wallet}
+                variant="danger"
+              />
+            </div>
           </>
         )}
       </div>

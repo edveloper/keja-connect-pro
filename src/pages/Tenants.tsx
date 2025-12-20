@@ -62,12 +62,12 @@ export default function Tenants() {
       {/* Add Tenant Button */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogTrigger asChild>
-          <Button className="w-full mb-6 h-12 text-base font-semibold">
-            <Plus className="h-5 w-5 mr-2" />
+          <Button className="w-full mb-6" size="lg">
+            <Plus className="h-5 w-5" />
             Add Tenant
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-sm mx-4">
+        <DialogContent className="max-w-sm mx-4 rounded-2xl">
           <DialogHeader>
             <DialogTitle>Add New Tenant</DialogTitle>
             <DialogDescription>
@@ -84,7 +84,7 @@ export default function Tenants() {
 
       {/* Edit Tenant Dialog */}
       <Dialog open={!!editingTenant} onOpenChange={(open) => !open && setEditingTenant(null)}>
-        <DialogContent className="max-w-sm mx-4">
+        <DialogContent className="max-w-sm mx-4 rounded-2xl">
           <DialogHeader>
             <DialogTitle>Edit Tenant</DialogTitle>
             <DialogDescription>
@@ -112,12 +112,12 @@ export default function Tenants() {
       )}
 
       {/* Tenants List */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="p-4">
+            <Card key={i} className="p-5">
               <div className="flex items-start gap-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
+                <Skeleton className="h-12 w-12 rounded-xl" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-24" />
@@ -127,13 +127,15 @@ export default function Tenants() {
             </Card>
           ))
         ) : tenants?.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <h3 className="font-semibold text-foreground mb-1">No tenants yet</h3>
+          <div className="text-center py-12 px-6 bg-card rounded-2xl border border-dashed border-border">
+            <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto mb-4">
+              <Users className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">No tenants yet</h3>
             <p className="text-sm text-muted-foreground">
               Add your first tenant to start tracking payments.
             </p>
-          </Card>
+          </div>
         ) : (
           tenants?.map((tenant, index) => {
             const paymentStatus = getPaymentStatus(tenant.id, tenant.rent_amount);
@@ -141,16 +143,16 @@ export default function Tenants() {
             return (
               <Card 
                 key={tenant.id} 
-                className="p-4 animate-slide-up"
+                className="p-5 animate-fade-in"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex items-start gap-4">
                   <div className={cn(
-                    "p-3 rounded-full",
+                    "p-3 rounded-xl shrink-0",
                     paymentStatus.status === 'paid' || paymentStatus.status === 'overpaid' 
-                      ? "bg-emerald-100 text-emerald-600" 
+                      ? "bg-success/15 text-success" 
                       : paymentStatus.status === 'partial'
-                      ? "bg-amber-100 text-amber-600"
+                      ? "bg-warning/15 text-warning"
                       : "bg-primary/10 text-primary"
                   )}>
                     {paymentStatus.status === 'paid' || paymentStatus.status === 'overpaid' ? (
@@ -162,47 +164,55 @@ export default function Tenants() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-foreground truncate">{tenant.name}</h3>
                       {paymentStatus.status === 'paid' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-success/15 text-success font-semibold">
                           Paid
                         </span>
                       )}
                       {paymentStatus.status === 'overpaid' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-primary/15 text-primary font-semibold">
                           +{paymentStatus.balance.toLocaleString()}
                         </span>
                       )}
                       {paymentStatus.status === 'partial' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
-                          -{Math.abs(paymentStatus.balance).toLocaleString()}
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-warning/15 text-warning font-semibold">
+                          −{Math.abs(paymentStatus.balance).toLocaleString()}
                         </span>
                       )}
                     </div>
-                    <div className="space-y-1 mt-1.5">
-                      <p className="text-sm text-muted-foreground flex items-center gap-2">
-                        <Phone className="h-3.5 w-3.5" />
+                    <div className="space-y-2 mt-3">
+                      <p className="text-sm text-muted-foreground flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-muted">
+                          <Phone className="h-3.5 w-3.5" />
+                        </div>
                         {formatKenyanPhone(tenant.phone)}
                       </p>
-                      <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                        <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-muted">
+                          <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
+                        </div>
                         KES {tenant.rent_amount.toLocaleString()}
                       </p>
                       {tenant.units ? (
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Home className="h-3.5 w-3.5" />
+                        <p className="text-sm text-muted-foreground flex items-center gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-muted">
+                            <Home className="h-3.5 w-3.5" />
+                          </div>
                           Unit {tenant.units.unit_number} • {(tenant.units.properties as { name: string } | null)?.name}
                         </p>
                       ) : (
-                        <p className="text-sm text-muted-foreground italic flex items-center gap-2">
-                          <Home className="h-3.5 w-3.5" />
+                        <p className="text-sm text-muted-foreground flex items-center gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-muted">
+                            <Home className="h-3.5 w-3.5" />
+                          </div>
                           No unit assigned
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-2">
                     {/* Record Payment Button */}
                     <Button 
                       variant={paymentStatus.status === 'unpaid' ? "default" : "outline"}
@@ -217,18 +227,18 @@ export default function Tenants() {
                       <Button 
                         variant="ghost" 
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-9 w-9 rounded-lg"
                         onClick={() => setEditingTenant(tenant as TenantWithUnit)}
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10">
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className="max-w-sm mx-4">
+                        <AlertDialogContent className="max-w-sm mx-4 rounded-2xl">
                           <AlertDialogHeader>
                             <AlertDialogTitle>Remove tenant?</AlertDialogTitle>
                             <AlertDialogDescription>
@@ -236,10 +246,10 @@ export default function Tenants() {
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
                             <AlertDialogAction 
                               onClick={() => handleDelete(tenant.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
                             >
                               Remove
                             </AlertDialogAction>

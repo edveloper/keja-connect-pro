@@ -10,20 +10,20 @@ interface PageContainerProps {
 
 export function PageContainer({ children, className, title, subtitle }: PageContainerProps) {
   return (
-    <div className={cn("min-h-screen pb-20", className)}>
+    <div className={cn("min-h-screen pb-24", className)}>
       {(title || subtitle) && (
-        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
-          <div className="px-4 py-4 max-w-lg mx-auto">
+        <header className="sticky top-0 z-40 glass border-b border-border/50 shadow-nav">
+          <div className="px-5 py-5 max-w-lg mx-auto">
             {title && (
-              <h1 className="text-xl font-bold text-foreground">{title}</h1>
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
             )}
             {subtitle && (
-              <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
+              <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
             )}
           </div>
         </header>
       )}
-      <main className="px-4 py-4 max-w-lg mx-auto">
+      <main className="px-5 py-5 max-w-lg mx-auto">
         {children}
       </main>
     </div>

@@ -38,14 +38,14 @@ export default function Dashboard() {
   return (
     <PageContainer title="Dashboard" subtitle={currentMonth}>
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-8">
         {isLoading || expensesLoading ? (
           <>
-            <Skeleton className="h-20 rounded-xl" />
-            <Skeleton className="h-20 rounded-xl" />
-            <Skeleton className="h-20 rounded-xl" />
-            <Skeleton className="h-20 rounded-xl" />
-            <Skeleton className="h-20 rounded-xl col-span-2" />
+            <Skeleton className="h-24 rounded-xl" />
+            <Skeleton className="h-24 rounded-xl" />
+            <Skeleton className="h-24 rounded-xl" />
+            <Skeleton className="h-24 rounded-xl" />
+            <Skeleton className="h-24 rounded-xl col-span-2" />
           </>
         ) : (
           <>
@@ -87,46 +87,50 @@ export default function Dashboard() {
       {/* Units Collapsibles */}
       <div className="space-y-4">
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-xl" />
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
             ))}
           </div>
         ) : allUnits.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No units yet. Add properties and units to get started.</p>
+          <div className="text-center py-12 px-6 bg-card rounded-2xl border border-dashed border-border">
+            <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto mb-4">
+              <Building2 className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">No units yet</h3>
+            <p className="text-sm text-muted-foreground">Add properties and units to get started.</p>
           </div>
         ) : (
           <>
             {/* Occupied Units */}
             <Collapsible open={occupiedOpen} onOpenChange={setOccupiedOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card border border-border rounded-xl hover:bg-accent/50 transition-colors">
-                <div className="flex items-center gap-2">
-                  <Home className="h-4 w-4 text-primary" />
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl hover:border-primary/30 transition-all duration-200 shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Home className="h-4 w-4 text-primary" />
+                  </div>
                   <span className="text-sm font-semibold text-foreground">
                     Occupied Units
                   </span>
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
                     {occupiedUnits.length}
                   </span>
                 </div>
-                {occupiedOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
+                <div className={`p-1.5 rounded-lg bg-muted transition-transform duration-200 ${occupiedOpen ? 'rotate-180' : ''}`}>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
+                </div>
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 space-y-2">
+              <CollapsibleContent className="mt-3 space-y-3">
                 {sortedOccupied.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
+                  <p className="text-sm text-muted-foreground text-center py-6 bg-muted/30 rounded-xl">
                     No occupied units
                   </p>
                 ) : (
                   sortedOccupied.map((unit, index) => (
                     <div
                       key={unit.id}
-                      className="animate-slide-up"
-                      style={{ animationDelay: `${index * 30}ms` }}
+                      className="animate-fade-in"
+                      style={{ animationDelay: `${index * 50}ms` }}
                     >
                       <UnitCard
                         unitNumber={unit.unit_number}
@@ -146,33 +150,33 @@ export default function Dashboard() {
 
             {/* Vacant Units */}
             <Collapsible open={vacantOpen} onOpenChange={setVacantOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card border border-border rounded-xl hover:bg-accent/50 transition-colors">
-                <div className="flex items-center gap-2">
-                  <DoorOpen className="h-4 w-4 text-muted-foreground" />
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl hover:border-primary/30 transition-all duration-200 shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-muted">
+                    <DoorOpen className="h-4 w-4 text-muted-foreground" />
+                  </div>
                   <span className="text-sm font-semibold text-foreground">
                     Vacant Units
                   </span>
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
                     {vacantUnits.length}
                   </span>
                 </div>
-                {vacantOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
+                <div className={`p-1.5 rounded-lg bg-muted transition-transform duration-200 ${vacantOpen ? 'rotate-180' : ''}`}>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
+                </div>
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 space-y-2">
+              <CollapsibleContent className="mt-3 space-y-3">
                 {vacantUnits.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
+                  <p className="text-sm text-muted-foreground text-center py-6 bg-muted/30 rounded-xl">
                     No vacant units
                   </p>
                 ) : (
                   vacantUnits.map((unit, index) => (
                     <div
                       key={unit.id}
-                      className="animate-slide-up"
-                      style={{ animationDelay: `${index * 30}ms` }}
+                      className="animate-fade-in"
+                      style={{ animationDelay: `${index * 50}ms` }}
                     >
                       <UnitCard
                         unitNumber={unit.unit_number}

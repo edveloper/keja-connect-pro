@@ -7,54 +7,66 @@
 @import url('@fontsource/dm-sans/600.css');
 @import url('@fontsource/dm-sans/700.css');
 
-/* Keja-Connect Design System - Mobile-first, High Contrast */
+/* Keja-Connect Design System - Clean, Modern, Mobile-first */
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 0 0% 8%;
+    --background: 210 20% 98%;
+    --foreground: 220 25% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 8%;
+    --card-foreground: 220 25% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 8%;
+    --popover-foreground: 220 25% 10%;
 
-    /* M-Pesa inspired green */
-    --primary: 145 80% 38%;
+    /* Primary - Modern teal/green */
+    --primary: 160 84% 39%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 8%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 220 25% 20%;
 
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 210 15% 93%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 145 60% 94%;
-    --accent-foreground: 145 80% 25%;
+    --accent: 160 50% 95%;
+    --accent-foreground: 160 84% 30%;
 
-    /* Success - Bright green for "Paid" */
-    --success: 145 85% 42%;
+    /* Success - Fresh green */
+    --success: 152 76% 42%;
     --success-foreground: 0 0% 100%;
 
-    /* Warning - Amber for partial payments */
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 8%;
+    /* Warning - Warm amber */
+    --warning: 38 95% 54%;
+    --warning-foreground: 30 100% 10%;
 
-    /* Arrears/Alert - Bold red */
-    --destructive: 0 75% 55%;
+    /* Destructive - Soft red */
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --ring: 145 80% 38%;
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 160 84% 39%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* Navigation */
     --nav-background: 0 0% 100%;
-    --nav-foreground: 0 0% 45%;
-    --nav-active: 145 80% 38%;
+    --nav-foreground: 220 10% 50%;
+    --nav-active: 160 84% 39%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(160 84% 39%), hsl(170 80% 35%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 20% 99%));
+    --gradient-surface: linear-gradient(135deg, hsl(210 20% 98%), hsl(210 15% 96%));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px hsl(220 25% 10% / 0.04);
+    --shadow-md: 0 4px 12px hsl(220 25% 10% / 0.06);
+    --shadow-lg: 0 8px 24px hsl(220 25% 10% / 0.08);
+    --shadow-card: 0 1px 3px hsl(220 25% 10% / 0.04), 0 4px 12px hsl(220 25% 10% / 0.03);
+    --shadow-nav: 0 -1px 3px hsl(220 25% 10% / 0.03);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -67,43 +79,53 @@
   }
 
   .dark {
-    --background: 0 0% 6%;
-    --foreground: 0 0% 98%;
+    --background: 220 20% 7%;
+    --foreground: 210 20% 98%;
 
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
+    --card: 220 20% 10%;
+    --card-foreground: 210 20% 98%;
 
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 220 20% 10%;
+    --popover-foreground: 210 20% 98%;
 
-    --primary: 145 75% 45%;
+    --primary: 160 70% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 14%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 210 20% 95%;
 
-    --muted: 0 0% 18%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 10% 55%;
 
-    --accent: 145 40% 15%;
-    --accent-foreground: 145 75% 50%;
+    --accent: 160 30% 15%;
+    --accent-foreground: 160 70% 55%;
 
-    --success: 145 80% 50%;
+    --success: 152 70% 48%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 8%;
+    --warning: 38 90% 50%;
+    --warning-foreground: 30 100% 10%;
 
-    --destructive: 0 70% 50%;
+    --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 145 75% 45%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 160 70% 45%;
 
-    --nav-background: 0 0% 8%;
-    --nav-foreground: 0 0% 55%;
-    --nav-active: 145 75% 45%;
+    --nav-background: 220 20% 9%;
+    --nav-foreground: 220 10% 55%;
+    --nav-active: 160 70% 45%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(160 70% 45%), hsl(170 65% 40%));
+    --gradient-card: linear-gradient(180deg, hsl(220 20% 10%), hsl(220 20% 9%));
+    --gradient-surface: linear-gradient(135deg, hsl(220 20% 7%), hsl(220 15% 6%));
+
+    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.4);
+    --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.2), 0 4px 12px hsl(0 0% 0% / 0.15);
+    --shadow-nav: 0 -1px 3px hsl(0 0% 0% / 0.2);
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -122,11 +144,13 @@
   }
 
   html {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -134,5 +158,29 @@
 @layer utilities {
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+
+  .glass {
+    @apply backdrop-blur-xl bg-card/80;
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-nav {
+    box-shadow: var(--shadow-nav);
+  }
+
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .text-balance {
+    text-wrap: balance;
   }
 }

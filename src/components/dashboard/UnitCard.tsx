@@ -38,42 +38,48 @@ export function UnitCard({
   
   return (
     <Card className={cn(
-      "p-4 animate-fade-in transition-all hover:shadow-md",
+      "p-4 transition-all duration-200 hover:shadow-lg hover:border-primary/20",
       className
     )}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2">
             <span className="text-lg font-bold text-foreground">{unitNumber}</span>
-            <span className="text-sm text-muted-foreground">• {propertyName}</span>
+            <span className="text-sm text-muted-foreground font-medium">• {propertyName}</span>
           </div>
           
           {isVacant ? (
-            <p className="text-sm text-muted-foreground italic">Available for rent</p>
+            <p className="text-sm text-muted-foreground">Available for rent</p>
           ) : (
-            <div className="space-y-1.5 mt-2">
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="truncate">{tenantName}</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5 text-sm text-foreground">
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <User className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <span className="truncate font-medium">{tenantName}</span>
               </div>
               {tenantPhone && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="h-4 w-4 flex-shrink-0" />
+                <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                  <div className="p-1.5 rounded-lg bg-muted">
+                    <Phone className="h-3.5 w-3.5" />
+                  </div>
                   <span>{tenantPhone}</span>
                 </div>
               )}
               {rentAmount && (
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Banknote className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <span>KES {rentAmount.toLocaleString()}</span>
+                <div className="flex items-center gap-2.5 text-sm">
+                  <div className="p-1.5 rounded-lg bg-muted">
+                    <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                  <span className="font-semibold text-foreground">KES {rentAmount.toLocaleString()}</span>
                   {paymentStatus === "partial" && (
-                    <span className="text-warning text-xs">
-                      (KES {balance.toLocaleString()} owed)
+                    <span className="text-warning text-xs font-medium bg-warning/10 px-2 py-0.5 rounded-full">
+                      −KES {balance.toLocaleString()}
                     </span>
                   )}
                   {paymentStatus === "overpaid" && (
-                    <span className="text-success text-xs">
-                      (+KES {Math.abs(balance).toLocaleString()} credit)
+                    <span className="text-success text-xs font-medium bg-success/10 px-2 py-0.5 rounded-full">
+                      +KES {Math.abs(balance).toLocaleString()}
                     </span>
                   )}
                 </div>

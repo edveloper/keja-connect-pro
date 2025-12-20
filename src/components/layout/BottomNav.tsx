@@ -12,29 +12,31 @@ const navItems = [
 
 export function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-nav border-t border-border safe-bottom">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border/50 shadow-nav safe-bottom">
+      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {navItems.map((item) => (
           <RouterNavLink
             key={item.to}
             to={item.to}
             end={item.to === "/"}
             className={({ isActive }) => cn(
-              "flex flex-col items-center justify-center gap-0.5 px-2 py-2 transition-colors min-w-0",
-              isActive ? "text-nav-active" : "text-nav-foreground"
+              "flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-0",
+              isActive 
+                ? "text-primary bg-accent" 
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             )}
           >
             {({ isActive }) => (
               <>
                 <item.icon
                   className={cn(
-                    "h-5 w-5 transition-all flex-shrink-0",
+                    "h-5 w-5 transition-transform duration-200 flex-shrink-0",
                     isActive && "scale-110"
                   )}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 <span className={cn(
-                  "text-[10px] font-medium truncate",
+                  "text-[11px] font-medium truncate",
                   isActive && "font-semibold"
                 )}>
                   {item.label}

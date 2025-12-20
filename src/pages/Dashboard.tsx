@@ -3,25 +3,28 @@ import { UnitCard } from "@/components/dashboard/UnitCard";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { useDashboardData } from "@/hooks/useDashboard";
 import { useTotalExpenses } from "@/hooks/useExpenses";
-import { Building2, CheckCircle2, AlertTriangle, Banknote, Wallet } from "lucide-react";
+import { Building2, CheckCircle2, AlertTriangle, Banknote, Wallet, ChevronDown, ChevronUp, Home, DoorOpen } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState } from "react";
 
 export default function Dashboard() {
   const { data, isLoading } = useDashboardData();
   const { data: totalExpenses, isLoading: expensesLoading } = useTotalExpenses();
   const currentMonth = new Date().toLocaleDateString("en-KE", { month: "long", year: "numeric" });
 
-  // Sort: arrears first, then partial, then paid, then vacant
-  const sortedUnits = [...(data?.units || [])].sort((a, b) => {
-    const aHasTenant = !!a.tenant_id;
-    const bHasTenant = !!b.tenant_id;
-    const statusOrder = { unpaid: 0, partial: 1, paid: 2, overpaid: 3 };
-    const aOrder = aHasTenant ? statusOrder[a.payment_status] : 4;
-    const bOrder = bHasTenant ? statusOrder[b.payment_status] : 4;
+  const [occupiedOpen, setOccupiedOpen] = useState(true);
+  const [vacantOpen, setVacantOpen] = useState(false);
 
-    if (!aHasTenant && bHasTenant) return 1;
-    if (aHasTenant && !bHasTenant) return -1;
-    return aOrder - bOrder;
+  // Separate occupied and vacant units
+  const allUnits = data?.units || [];
+  const occupiedUnits = allUnits.filter(u => !!u.tenant_id);
+  const vacantUnits = allUnits.filter(u => !u.tenant_id);
+
+  // Sort occupied: arrears first, then partial, then paid
+  const sortedOccupied = [...occupiedUnits].sort((a, b) => {
+    const statusOrder = { unpaid: 0, partial: 1, paid: 2, overpaid: 3 };
+    return statusOrder[a.payment_status] - statusOrder[b.payment_status];
   });
 
   const stats = data?.stats || {
@@ -81,40 +84,107 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Units List */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          All Units
-        </h2>
+      {/* Units Collapsibles */}
+      <div className="space-y-4">
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-20 w-full rounded-xl" />
             ))}
           </div>
-        ) : sortedUnits.length === 0 ? (
+        ) : allUnits.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>No units yet. Add properties and units to get started.</p>
           </div>
         ) : (
-          sortedUnits.map((unit, index) => (
-            <div
-              key={unit.id}
-              className="animate-slide-up"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <UnitCard
-                unitNumber={unit.unit_number}
-                propertyName={unit.property_name}
-                tenantName={unit.tenant_name || undefined}
-                tenantPhone={unit.tenant_phone || undefined}
-                rentAmount={unit.rent_amount || undefined}
-                paymentStatus={unit.payment_status}
-                amountPaid={unit.amount_paid}
-                balance={unit.balance}
-              />
-            </div>
-          ))
+          <>
+            {/* Occupied Units */}
+            <Collapsible open={occupiedOpen} onOpenChange={setOccupiedOpen}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card border border-border rounded-xl hover:bg-accent/50 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Home className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">
+                    Occupied Units
+                  </span>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {occupiedUnits.length}
+                  </span>
+                </div>
+                {occupiedOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-2">
+                {sortedOccupied.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No occupied units
+                  </p>
+                ) : (
+                  sortedOccupied.map((unit, index) => (
+                    <div
+                      key={unit.id}
+                      className="animate-slide-up"
+                      style={{ animationDelay: `${index * 30}ms` }}
+                    >
+                      <UnitCard
+                        unitNumber={unit.unit_number}
+                        propertyName={unit.property_name}
+                        tenantName={unit.tenant_name || undefined}
+                        tenantPhone={unit.tenant_phone || undefined}
+                        rentAmount={unit.rent_amount || undefined}
+                        paymentStatus={unit.payment_status}
+                        amountPaid={unit.amount_paid}
+                        balance={unit.balance}
+                      />
+                    </div>
+                  ))
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Vacant Units */}
+            <Collapsible open={vacantOpen} onOpenChange={setVacantOpen}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card border border-border rounded-xl hover:bg-accent/50 transition-colors">
+                <div className="flex items-center gap-2">
+                  <DoorOpen className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">
+                    Vacant Units
+                  </span>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {vacantUnits.length}
+                  </span>
+                </div>
+                {vacantOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-2">
+                {vacantUnits.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No vacant units
+                  </p>
+                ) : (
+                  vacantUnits.map((unit, index) => (
+                    <div
+                      key={unit.id}
+                      className="animate-slide-up"
+                      style={{ animationDelay: `${index * 30}ms` }}
+                    >
+                      <UnitCard
+                        unitNumber={unit.unit_number}
+                        propertyName={unit.property_name}
+                        paymentStatus={unit.payment_status}
+                      />
+                    </div>
+                  ))
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          </>
         )}
       </div>
     </PageContainer>

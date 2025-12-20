@@ -13,23 +13,23 @@ interface StatsCardProps {
 export function StatsCard({ label, value, icon: Icon, variant = "default", className }: StatsCardProps) {
   return (
     <Card className={cn(
-      "p-4 animate-fade-in",
-      variant === "success" && "border-success/30 bg-success/5",
-      variant === "danger" && "border-destructive/30 bg-destructive/5",
+      "p-4 animate-fade-in overflow-hidden relative",
+      variant === "success" && "border-success/20 bg-gradient-to-br from-success/5 to-success/10",
+      variant === "danger" && "border-destructive/20 bg-gradient-to-br from-destructive/5 to-destructive/10",
       className
     )}>
       <div className="flex items-center gap-3">
         <div className={cn(
-          "p-2.5 rounded-lg",
-          variant === "default" && "bg-muted text-muted-foreground",
-          variant === "success" && "bg-success/10 text-success",
-          variant === "danger" && "bg-destructive/10 text-destructive"
+          "p-2.5 rounded-xl shrink-0",
+          variant === "default" && "bg-primary/10 text-primary",
+          variant === "success" && "bg-success/15 text-success",
+          variant === "danger" && "bg-destructive/15 text-destructive"
         )}>
           <Icon className="h-5 w-5" />
         </div>
-        <div>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+        <div className="min-w-0">
+          <p className="text-2xl font-bold text-foreground truncate">{value}</p>
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
         </div>
       </div>
     </Card>

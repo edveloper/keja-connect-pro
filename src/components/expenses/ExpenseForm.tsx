@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -46,7 +47,7 @@ export function ExpenseForm({
   isLoading,
 }: ExpenseFormProps) {
   const [propertyId, setPropertyId] = useState("");
-  const [unitId, setUnitId] = useState<string>("");
+  const [unitId, setUnitId] = useState<string>("none");
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -64,7 +65,7 @@ export function ExpenseForm({
     
     onSubmit({
       property_id: propertyId,
-      unit_id: unitId || null,
+      unit_id: unitId === "none" ? null : unitId,
       category_id: categoryId,
       amount: parseInt(amount, 10),
       description: description.trim() || undefined,
@@ -73,7 +74,7 @@ export function ExpenseForm({
     
     // Reset form
     setPropertyId("");
-    setUnitId("");
+    setUnitId("none");
     setCategoryId("");
     setAmount("");
     setDescription("");
@@ -93,15 +94,18 @@ export function ExpenseForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm mx-4">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Record Expense</DialogTitle>
+          <DialogDescription>
+            Add a new expense for your property. Fill in the required fields below.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Property Selection */}
           <div className="space-y-2">
             <Label>Property *</Label>
-            <Select value={propertyId} onValueChange={(v) => { setPropertyId(v); setUnitId(""); }}>
+            <Select value={propertyId} onValueChange={(v) => { setPropertyId(v); setUnitId("none"); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select property" />
               </SelectTrigger>
@@ -116,13 +120,13 @@ export function ExpenseForm({
           {/* Unit Selection (Optional) */}
           {propertyId && (
             <div className="space-y-2">
-              <Label>Unit (Optional - leave empty for property-wide expense)</Label>
+              <Label>Unit (Optional)</Label>
               <Select value={unitId} onValueChange={setUnitId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Property-wide expense" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Property-wide</SelectItem>
+                  <SelectItem value="none">Property-wide</SelectItem>
                   {filteredUnits.map((u) => (
                     <SelectItem key={u.id} value={u.id}>Unit {u.unit_number}</SelectItem>
                   ))}

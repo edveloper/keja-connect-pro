@@ -183,32 +183,36 @@ export default function Tenants() {
                       )}
                     </div>
                     <div className="space-y-2 mt-3">
-                      <p className="text-sm text-muted-foreground flex items-center gap-2.5">
+                      {/* Changed <p> to <div> - FIX #1 */}
+                      <div className="text-sm text-muted-foreground flex items-center gap-2.5">
                         <div className="p-1.5 rounded-lg bg-muted">
                           <Phone className="h-3.5 w-3.5" />
                         </div>
                         {formatKenyanPhone(tenant.phone)}
-                      </p>
-                      <p className="text-sm font-medium text-foreground flex items-center gap-2.5">
+                      </div>
+                      {/* Changed <p> to <div> - FIX #2 */}
+                      <div className="text-sm font-medium text-foreground flex items-center gap-2.5">
                         <div className="p-1.5 rounded-lg bg-muted">
                           <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
                         KES {tenant.rent_amount.toLocaleString()}
-                      </p>
+                      </div>
                       {tenant.units ? (
-                        <p className="text-sm text-muted-foreground flex items-center gap-2.5">
+                        /* Changed <p> to <div> - FIX #3 */
+                        <div className="text-sm text-muted-foreground flex items-center gap-2.5">
                           <div className="p-1.5 rounded-lg bg-muted">
                             <Home className="h-3.5 w-3.5" />
                           </div>
                           Unit {tenant.units.unit_number} • {(tenant.units.properties as { name: string } | null)?.name}
-                        </p>
+                        </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground flex items-center gap-2.5">
+                        /* Changed <p> to <div> - FIX #4 */
+                        <div className="text-sm text-muted-foreground flex items-center gap-2.5">
                           <div className="p-1.5 rounded-lg bg-muted">
                             <Home className="h-3.5 w-3.5" />
                           </div>
                           No unit assigned
-                        </p>
+                        </div>
                       )}
                     </div>
                   </div>

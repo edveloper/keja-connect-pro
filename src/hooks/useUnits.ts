@@ -6,9 +6,13 @@ export function useUnits(propertyId?: string) {
   return useQuery({
     queryKey: ['units', propertyId],
     queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // We join properties to check the user_id of the owner
       let query = supabase
         .from('units')
-        .select('*, properties(name, address)')
+        .select('*, properties!inner(name, address, user_id)')
+        .eq('properties.user_id', session?.user?.id)
         .order('unit_number', { ascending: true });
       
       if (propertyId) {
@@ -61,7 +65,7 @@ export function useBulkCreateUnits() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      toast({ title: 'Success', description: `${data.length} units created successfully` });
+      toast({ title: 'Success', description: `${data.length} units created` });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -84,10 +88,7 @@ export function useDeleteUnit() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
-      toast({ title: 'Success', description: 'Unit deleted successfully' });
-    },
-    onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Success', description: 'Unit deleted' });
     },
   });
 }

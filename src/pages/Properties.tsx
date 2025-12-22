@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { PropertyForm, generateUnitNumbers, BlockConfig } from "@/components/properties/PropertyForm";
@@ -23,6 +23,14 @@ export default function Properties() {
   const createUnit = useCreateUnit();
   const bulkCreateUnits = useBulkCreateUnits();
   const deleteUnit = useDeleteUnit();
+
+  // Natural Sorting for Units
+  const sortedUnits = useMemo(() => {
+    if (!units) return [];
+    return [...units].sort((a, b) => 
+      a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true, sensitivity: 'base' })
+    );
+  }, [units]);
 
   // Calculate tenant counts per unit
   const tenantCounts: Record<string, number> = {};
@@ -91,9 +99,7 @@ export default function Properties() {
             <Building2 className="h-8 w-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium">No properties yet</h3>
-          <p className="text-muted-foreground mt-1">
-            Add your first property to get started
-          </p>
+          <p className="text-muted-foreground mt-1">Add your first property to get started</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -101,11 +107,11 @@ export default function Properties() {
             <PropertyCard
               key={property.id}
               property={property}
-              units={units || []}
+              units={sortedUnits} // Now using the sorted units list
               tenantCounts={tenantCounts}
               onAddUnit={(id, name, numberingStyle) => setAddUnitTarget({ id, name, numberingStyle })}
-              onDeleteUnit={(unitId) => deleteUnit.mutate(unitId)}
-              onDeleteProperty={(propertyId) => deleteProperty.mutate(propertyId)}
+              onDeleteUnit={(uId) => deleteUnit.mutate(uId)}
+              onDeleteProperty={(pId) => deleteProperty.mutate(pId)}
               index={index}
             />
           ))}

@@ -1,12 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react"; // Added useMemo
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,7 +42,15 @@ export function PropertyCard({
   const [deleteUnitId, setDeleteUnitId] = useState<string | null>(null);
   const [deletePropertyOpen, setDeletePropertyOpen] = useState(false);
 
-  const propertyUnits = units.filter((u) => u.property_id === property.id);
+  // FIX: Natural Sorting for unit numbers within this specific property
+  const propertyUnits = useMemo(() => {
+    return units
+      .filter((u) => u.property_id === property.id)
+      .sort((a, b) => 
+        a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true, sensitivity: 'base' })
+      );
+  }, [units, property.id]);
+
   const totalTenants = propertyUnits.reduce(
     (sum, unit) => sum + (tenantCounts[unit.id] || 0),
     0
@@ -55,38 +59,38 @@ export function PropertyCard({
   return (
     <>
       <Card
-        className="animate-slide-up overflow-hidden"
+        className="animate-slide-up overflow-hidden border-border/50"
         style={{ animationDelay: `${index * 75}ms` }}
       >
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger asChild>
-            <div className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+            <div className="p-4 cursor-pointer hover:bg-muted/30 transition-colors">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary shrink-0">
                   <Building2 className="h-6 w-6" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-foreground truncate">
+                  <h3 className="font-semibold text-foreground truncate text-base">
                     {property.name}
                   </h3>
                   {property.address && (
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="text-xs text-muted-foreground truncate mb-1">
                       {property.address}
                     </p>
                   )}
-                  <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <Home className="h-4 w-4" />
+                      <Home className="h-3.5 w-3.5" />
                       {propertyUnits.length} units
                     </span>
                     <span className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
+                      <Users className="h-3.5 w-3.5" />
                       {totalTenants} tenants
                     </span>
                   </div>
                 </div>
                 <ChevronDown
-                  className={`h-5 w-5 text-muted-foreground transition-transform ${
+                  className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${
                     isOpen ? "rotate-180" : ""
                   }`}
                 />
@@ -94,38 +98,42 @@ export function PropertyCard({
             </div>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="px-4 pb-4 border-t pt-4 space-y-3">
+            <div className="px-4 pb-4 border-t border-border/50 pt-4 space-y-4 bg-muted/10">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Units</span>
+                <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Unit List</span>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => onAddUnit(property.id, property.name, property.numbering_style)}
+                  className="h-8 text-xs font-semibold"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddUnit(property.id, property.name, property.numbering_style || undefined);
+                  }}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
+                  <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Unit
                 </Button>
               </div>
+              
               {propertyUnits.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  No units yet. Add your first unit.
-                </p>
+                <div className="text-center py-6 bg-muted/20 rounded-xl border border-dashed">
+                  <p className="text-xs text-muted-foreground">No units found</p>
+                </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   {propertyUnits.map((unit) => (
                     <div
                       key={unit.id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border/50 shadow-sm"
                     >
-                      <div className="flex items-center gap-2">
-                        <Home className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">{unit.unit_number}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-bold text-foreground truncate">#{unit.unit_number}</span>
                         {tenantCounts[unit.id] ? (
-                          <Badge variant="secondary" className="text-xs">
-                            {tenantCounts[unit.id]} tenant
+                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 uppercase">
+                            Full
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 uppercase text-success border-success/30 bg-success/5">
                             Vacant
                           </Badge>
                         )}
@@ -133,23 +141,30 @@ export function PropertyCard({
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => setDeleteUnitId(unit.id)}
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteUnitId(unit.id);
+                        }}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   ))}
                 </div>
               )}
-              <div className="pt-2 border-t">
+              
+              <div className="pt-2 border-t border-border/50">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => setDeletePropertyOpen(true)}
+                  className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 h-9 text-xs font-semibold"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeletePropertyOpen(true);
+                  }}
                 >
-                  <Trash2 className="h-4 w-4 mr-1" />
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
                   Delete Property
                 </Button>
               </div>
@@ -158,19 +173,19 @@ export function PropertyCard({
         </Collapsible>
       </Card>
 
-      {/* Delete Unit Dialog */}
+      {/* AlertDialogs remain the same... */}
       <AlertDialog open={!!deleteUnitId} onOpenChange={() => setDeleteUnitId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[90vw] rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Unit?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this unit. Any tenants assigned to this unit will be unassigned.
+              Permanently delete this unit. Tenants will be unassigned.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col gap-2">
+            <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (deleteUnitId) onDeleteUnit(deleteUnitId);
                 setDeleteUnitId(null);
@@ -182,25 +197,24 @@ export function PropertyCard({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Property Dialog */}
       <AlertDialog open={deletePropertyOpen} onOpenChange={setDeletePropertyOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[90vw] rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Property?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete "{property.name}" and all its units. This action cannot be undone.
+              This will permanently delete "{property.name}" and all units.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col gap-2">
+            <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 onDeleteProperty(property.id);
                 setDeletePropertyOpen(false);
               }}
             >
-              Delete
+              Delete Property
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

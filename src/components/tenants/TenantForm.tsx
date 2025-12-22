@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { isValidKenyanPhone, normalizeKenyanPhone } from "@/lib/phone-validation";
 import { useUnits } from "@/hooks/useUnits";
 import { useUserProperties } from "@/hooks/useTenants";
-import { cn } from "@/lib/utils"; // <--- Add this line here
+import { cn } from "@/lib/utils";
 import type { Tables } from '@/integrations/supabase/types';
 import { AlertCircle, User, Phone, Banknote, Building2, Home } from "lucide-react";
 
@@ -31,9 +31,19 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
   const { data: properties } = useUserProperties();
   const { data: allUnits } = useUnits();
 
+  // FIX: Natural Sorting for Unit Numbers (1, 2, 3... 10, 11)
   const filteredUnits = useMemo(() => {
     if (!selectedPropertyId || !allUnits) return [];
-    return allUnits.filter((u: any) => u.property_id === selectedPropertyId);
+    
+    return allUnits
+      .filter((u: any) => u.property_id === selectedPropertyId)
+      .sort((a: any, b: any) => {
+        // This regex extracts numbers and compares them numerically
+        return a.unit_number.localeCompare(b.unit_number, undefined, {
+          numeric: true,
+          sensitivity: 'base'
+        });
+      });
   }, [selectedPropertyId, allUnits]);
 
   const validatePhone = (value: string) => {
@@ -42,7 +52,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
       return false;
     }
     if (!isValidKenyanPhone(value)) {
-      setPhoneError("Invalid Kenyan format");
+      setPhoneError("Invalid format");
       return false;
     }
     setPhoneError("");
@@ -62,41 +72,40 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-full overflow-x-hidden">
+    /* Added w-full and px-0 to ensure no weird left-side gaps */
+    <form onSubmit={handleSubmit} className="space-y-4 w-full mx-auto">
       <div className="space-y-3">
-        {/* Basic Info Group */}
         <div className="space-y-2">
-          <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Tenant Information</Label>
+          <Label className="text-xs font-bold uppercase text-muted-foreground">Tenant Information</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-9 h-11" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} required />
+            <Input className="pl-9 h-11 w-full" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           
           <div className="relative">
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              className={cn("pl-9 h-11", phoneError && "border-destructive")} 
+              className={cn("pl-9 h-11 w-full", phoneError && "border-destructive")} 
               type="tel" 
-              placeholder="M-Pesa Number (07...)" 
+              placeholder="Mobile Number" 
               value={phone} 
               onChange={(e) => { setPhone(e.target.value); if (phoneError) validatePhone(e.target.value); }} 
             />
-            {phoneError && <p className="text-[10px] text-destructive mt-1 ml-1 flex items-center gap-1"><AlertCircle className="h-3 w-3"/> {phoneError}</p>}
+            {phoneError && <p className="text-[10px] text-destructive mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3"/> {phoneError}</p>}
           </div>
 
           <div className="relative">
             <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-9 h-11" type="number" placeholder="Monthly Rent" value={rentAmount} onChange={(e) => setRentAmount(e.target.value)} required />
+            <Input className="pl-9 h-11 w-full" type="number" placeholder="Monthly Rent" value={rentAmount} onChange={(e) => setRentAmount(e.target.value)} required />
           </div>
         </div>
 
-        {/* Assignment Group */}
         <div className="space-y-2 pt-2 border-t border-muted">
-          <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">House Assignment</Label>
+          <Label className="text-xs font-bold uppercase text-muted-foreground">Property Assignment</Label>
           
           <div className="grid grid-cols-1 gap-3">
             <Select value={selectedPropertyId} onValueChange={(val) => { setSelectedPropertyId(val); setUnitId(null); }}>
-              <SelectTrigger className="h-11">
+              <SelectTrigger className="h-11 w-full">
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-primary" />
                   <SelectValue placeholder="Select Property" />
@@ -108,7 +117,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
             </Select>
 
             <Select value={unitId || "none"} onValueChange={(v) => setUnitId(v === "none" ? null : v)} disabled={!selectedPropertyId}>
-              <SelectTrigger className={cn("h-11", unitId && "border-primary/50 bg-primary/5")}>
+              <SelectTrigger className={cn("h-11 w-full", unitId && "border-primary/50 bg-primary/5")}>
                 <div className="flex items-center gap-2">
                   <Home className={cn("h-4 w-4", unitId ? "text-primary" : "text-muted-foreground")} />
                   <SelectValue placeholder="Select Unit" />
@@ -116,18 +125,20 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Unassigned</SelectItem>
-                {filteredUnits.map((u: any) => <SelectItem key={u.id} value={u.id}>Unit {u.unit_number}</SelectItem>)}
+                {filteredUnits.map((u: any) => (
+                  <SelectItem key={u.id} value={u.id}>Unit {u.unit_number}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2 pt-4">
-        <Button type="submit" disabled={isLoading || !unitId} className="w-full h-12 order-1 sm:order-2 shadow-lg">
-          {isLoading ? "Saving..." : tenant ? "Save Changes" : "Assign Tenant"}
+      <div className="flex flex-col gap-2 pt-4">
+        <Button type="submit" disabled={isLoading || !unitId} className="w-full h-12 shadow-md">
+          {isLoading ? "Saving..." : tenant ? "Update Details" : "Add Tenant"}
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel} className="w-full h-12 order-2 sm:order-1">
+        <Button type="button" variant="ghost" onClick={onCancel} className="w-full h-12 text-muted-foreground">
           Cancel
         </Button>
       </div>

@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExpenseCategory, useCreateCategory } from "@/hooks/useExpenses";
-import { Plus } from "lucide-react";
+import { Plus, X, Check, Building2, Home, Tag } from "lucide-react";
 
 interface ExpenseFormProps {
   open: boolean;
@@ -72,7 +72,6 @@ export function ExpenseForm({
       expense_date: expenseDate,
     });
     
-    // Reset form
     setPropertyId("");
     setUnitId("none");
     setCategoryId("");
@@ -94,36 +93,42 @@ export function ExpenseForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Record Expense</DialogTitle>
-          <DialogDescription>
-            Add a new expense for your property. Fill in the required fields below.
+      {/* Optimized padding for mobile screens */}
+      <DialogContent className="max-w-md w-[95vw] rounded-2xl p-4 sm:p-6 max-h-[95vh] overflow-y-auto">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-xl">Record Expense</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
+            Fill in the details for your property expense.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Property Selection */}
-          <div className="space-y-2">
-            <Label>Property *</Label>
-            <Select value={propertyId} onValueChange={(v) => { setPropertyId(v); setUnitId("none"); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select property" />
-              </SelectTrigger>
-              <SelectContent>
-                {properties.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          {/* Unit Selection (Optional) */}
-          {propertyId && (
-            <div className="space-y-2">
-              <Label>Unit (Optional)</Label>
-              <Select value={unitId} onValueChange={setUnitId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Property-wide expense" />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Property */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1">
+                <Building2 className="h-3 w-3" /> Property
+              </Label>
+              <Select value={propertyId} onValueChange={(v) => { setPropertyId(v); setUnitId("none"); }}>
+                <SelectTrigger className="h-11 sm:h-10">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Unit */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1">
+                <Home className="h-3 w-3" /> Unit
+              </Label>
+              <Select value={unitId} onValueChange={setUnitId} disabled={!propertyId}>
+                <SelectTrigger className="h-11 sm:h-10">
+                  <SelectValue placeholder="All Units" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Property-wide</SelectItem>
@@ -133,40 +138,34 @@ export function ExpenseForm({
                 </SelectContent>
               </Select>
             </div>
-          )}
+          </div>
 
-          {/* Category Selection */}
-          <div className="space-y-2">
-            <Label>Category *</Label>
+          {/* Category */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1">
+              <Tag className="h-3 w-3" /> Category
+            </Label>
             {showNewCategory ? (
-              <div className="flex gap-2">
+              <div className="flex gap-2 animate-in fade-in slide-in-from-left-2">
                 <Input
-                  placeholder="New category name"
+                  className="h-11 sm:h-10"
+                  placeholder="Category name"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
+                  autoFocus
                 />
-                <Button 
-                  type="button" 
-                  size="sm" 
-                  onClick={handleCreateCategory}
-                  disabled={createCategory.isPending}
-                >
-                  Add
+                <Button type="button" size="icon" onClick={handleCreateCategory} disabled={createCategory.isPending}>
+                  <Check className="h-4 w-4" />
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setShowNewCategory(false)}
-                >
-                  Cancel
+                <Button type="button" variant="ghost" size="icon" onClick={() => setShowNewCategory(false)}>
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
             ) : (
               <div className="flex gap-2">
                 <Select value={categoryId} onValueChange={setCategoryId}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select category" />
+                  <SelectTrigger className="h-11 sm:h-10 flex-1">
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((c) => (
@@ -174,57 +173,36 @@ export function ExpenseForm({
                     ))}
                   </SelectContent>
                 </Select>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => setShowNewCategory(true)}
-                >
+                <Button type="button" variant="outline" size="icon" className="h-11 w-11 sm:h-10 sm:w-10" onClick={() => setShowNewCategory(true)}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
             )}
           </div>
 
-          {/* Amount */}
-          <div className="space-y-2">
-            <Label>Amount (KES) *</Label>
-            <Input
-              type="number"
-              min="1"
-              placeholder="e.g., 5000"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Amount (KES)</Label>
+              <Input type="number" className="h-11 sm:h-10" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Date</Label>
+              <Input type="date" className="h-11 sm:h-10" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
+            </div>
           </div>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <Label>Description (Optional)</Label>
-            <Textarea
-              placeholder="e.g., Plumber fixed kitchen sink"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Description</Label>
+            <Textarea 
+              placeholder="What was this for?" 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
               rows={2}
+              className="resize-none"
             />
           </div>
 
-          {/* Date */}
-          <div className="space-y-2">
-            <Label>Date</Label>
-            <Input
-              type="date"
-              value={expenseDate}
-              onChange={(e) => setExpenseDate(e.target.value)}
-            />
-          </div>
-
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading || !propertyId || !categoryId || !amount}
-          >
+          <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={isLoading || !propertyId || !categoryId || !amount}>
             {isLoading ? "Saving..." : "Save Expense"}
           </Button>
         </form>

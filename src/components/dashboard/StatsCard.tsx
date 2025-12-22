@@ -13,23 +13,36 @@ interface StatsCardProps {
 export function StatsCard({ label, value, icon: Icon, variant = "default", className }: StatsCardProps) {
   return (
     <Card className={cn(
-      "p-4 animate-fade-in overflow-hidden relative",
+      "p-3 sm:p-4 animate-fade-in overflow-hidden relative",
       variant === "success" && "border-success/20 bg-gradient-to-br from-success/5 to-success/10",
       variant === "danger" && "border-destructive/20 bg-gradient-to-br from-destructive/5 to-destructive/10",
       className
     )}>
-      <div className="flex items-center gap-3">
+      {/* Using 'items-start' for mobile to prevent icon stretching 
+          and 'sm:items-center' for larger screens.
+      */}
+      <div className="flex flex-row items-center gap-2 sm:gap-3">
         <div className={cn(
-          "p-2.5 rounded-xl shrink-0",
+          "p-2 sm:p-2.5 rounded-xl shrink-0",
           variant === "default" && "bg-primary/10 text-primary",
           variant === "success" && "bg-success/15 text-success",
           variant === "danger" && "bg-destructive/15 text-destructive"
         )}>
-          <Icon className="h-5 w-5" />
+          <Icon className="h-4 w-4 sm:h-5 sm:h-5" />
         </div>
-        <div className="min-w-0">
-          <p className="text-2xl font-bold text-foreground truncate">{value}</p>
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
+        
+        <div className="min-w-0 flex-1">
+          {/* Responsive Text: 
+              - text-lg on mobile (approx 18px)
+              - sm:text-xl on tablets (approx 20px)
+              - lg:text-2xl on desktop (approx 24px)
+          */}
+          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate leading-tight">
+            {value}
+          </p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider truncate">
+            {label}
+          </p>
         </div>
       </div>
     </Card>

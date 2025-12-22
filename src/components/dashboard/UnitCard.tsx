@@ -38,57 +38,78 @@ export function UnitCard({
   
   return (
     <Card className={cn(
-      "p-4 transition-all duration-200 hover:shadow-lg hover:border-primary/20",
+      "p-3 sm:p-4 transition-all duration-200 hover:shadow-lg hover:border-primary/20",
       className
     )}>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-2 sm:gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg font-bold text-foreground">{unitNumber}</span>
-            <span className="text-sm text-muted-foreground font-medium">• {propertyName}</span>
+          {/* Unit and Property Row */}
+          <div className="flex items-baseline gap-1.5 mb-2 overflow-hidden">
+            <span className="text-base sm:text-lg font-bold text-foreground shrink-0">
+              {unitNumber}
+            </span>
+            <span className="text-xs sm:text-sm text-muted-foreground font-medium truncate">
+              • {propertyName}
+            </span>
           </div>
           
           {isVacant ? (
-            <p className="text-sm text-muted-foreground">Available for rent</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Available for rent</p>
           ) : (
             <div className="space-y-2">
-              <div className="flex items-center gap-2.5 text-sm text-foreground">
-                <div className="p-1.5 rounded-lg bg-primary/10">
-                  <User className="h-3.5 w-3.5 text-primary" />
+              {/* Tenant Name */}
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
+                  <User className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
                 </div>
                 <span className="truncate font-medium">{tenantName}</span>
               </div>
+
+              {/* Tenant Phone */}
               {tenantPhone && (
-                <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                  <div className="p-1.5 rounded-lg bg-muted">
-                    <Phone className="h-3.5 w-3.5" />
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <div className="p-1.5 rounded-lg bg-muted shrink-0">
+                    <Phone className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                   </div>
-                  <span>{tenantPhone}</span>
+                  <span className="truncate">{tenantPhone}</span>
                 </div>
               )}
+
+              {/* Rent and Balance */}
               {rentAmount && (
-                <div className="flex items-center gap-2.5 text-sm">
-                  <div className="p-1.5 rounded-lg bg-muted">
-                    <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
+                <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-muted shrink-0">
+                      <Banknote className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
+                    </div>
+                    <span className="font-semibold text-foreground whitespace-nowrap">
+                      KES {rentAmount.toLocaleString()}
+                    </span>
                   </div>
-                  <span className="font-semibold text-foreground">KES {rentAmount.toLocaleString()}</span>
-                  {paymentStatus === "partial" && (
-                    <span className="text-warning text-xs font-medium bg-warning/10 px-2 py-0.5 rounded-full">
-                      −KES {balance.toLocaleString()}
-                    </span>
-                  )}
-                  {paymentStatus === "overpaid" && (
-                    <span className="text-success text-xs font-medium bg-success/10 px-2 py-0.5 rounded-full">
-                      +KES {Math.abs(balance).toLocaleString()}
-                    </span>
-                  )}
+
+                  {/* Status Pills */}
+                  <div className="flex flex-wrap gap-1">
+                    {paymentStatus === "partial" && (
+                      <span className="text-warning text-[10px] sm:text-xs font-medium bg-warning/10 px-2 py-0.5 rounded-full whitespace-nowrap">
+                        −KES {balance.toLocaleString()}
+                      </span>
+                    )}
+                    {paymentStatus === "overpaid" && (
+                      <span className="text-success text-[10px] sm:text-xs font-medium bg-success/10 px-2 py-0.5 rounded-full whitespace-nowrap">
+                        +KES {Math.abs(balance).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           )}
         </div>
         
-        <StatusBadge status={getStatusForBadge()} />
+        {/* Badge - shrink-0 ensures it never gets squashed */}
+        <div className="shrink-0">
+          <StatusBadge status={getStatusForBadge()} />
+        </div>
       </div>
     </Card>
   );

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { differenceInMonths, startOfMonth, parseISO, getDaysInMonth, differenceInDays, endOfMonth, addMonths } from 'date-fns';
 
 export type PaymentStatus = 'paid' | 'partial' | 'unpaid' | 'overpaid';
 
@@ -17,17 +18,6 @@ export interface DashboardUnit {
   balance: number;
 }
 
-export interface DashboardStats {
-  totalUnits: number;
-  occupiedUnits: number;
-  paidUnits: number;
-  arrearsUnits: number;
-  totalCollected: number;
-  totalArrearsValue: number;
-  totalDeposits: number;
-}
-
-// Explicit interface to solve the SelectQueryError
 interface Tenant {
   id: string;
   unit_id: string;
@@ -35,6 +25,10 @@ interface Tenant {
   phone: string | null;
   rent_amount: number;
   security_deposit: number | null;
+  lease_start: string | null;
+  opening_balance: number | null;
+  is_prorated: boolean;
+  first_month_override: number | null;
 }
 
 export function useDashboardData(selectedDate: Date | null = new Date()) {
@@ -50,73 +44,71 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
 
       if (unitsError) throw unitsError;
 
-      // We cast this to Tenant[] to satisfy TypeScript
-      const { data: tenantsData, error: tenantsError } = await supabase
-        .from('tenants')
-        .select('id, unit_id, name, phone, rent_amount, security_deposit');
-
+      const { data: tenantsData, error: tenantsError } = await supabase.from('tenants').select('*');
       if (tenantsError) throw tenantsError;
       const tenants = tenantsData as unknown as Tenant[];
 
-      let query = supabase.from('payments').select('tenant_id, amount');
-      if (selectedDate) {
-        query = query.eq('payment_month', dateKey);
-      }
+      let paymentsQuery = supabase.from('payments').select('tenant_id, amount, payment_month');
+      if (selectedDate) paymentsQuery = paymentsQuery.lte('payment_month', dateKey);
 
-      const { data: payments, error: paymentsError } = await query;
+      const { data: allPayments, error: paymentsError } = await paymentsQuery;
       if (paymentsError) throw paymentsError;
-
-      const tenantPayments = new Map<string, number>();
-      (payments || []).forEach(p => {
-        const current = tenantPayments.get(p.tenant_id) || 0;
-        tenantPayments.set(p.tenant_id, current + p.amount);
-      });
-
-      const getPaymentStatus = (rent: number, paid: number): PaymentStatus => {
-        if (paid === 0) return 'unpaid';
-        if (paid < rent) return 'partial';
-        if (paid > rent) return 'overpaid';
-        return 'paid';
-      };
 
       const dashboardUnits: DashboardUnit[] = (units || []).map(unit => {
         const tenant = tenants?.find(t => t.unit_id === unit.id);
-        const rentAmount = tenant?.rent_amount || 0;
-        const amountPaid = tenant ? (tenantPayments.get(tenant.id) || 0) : 0;
-        const balance = rentAmount - amountPaid;
         
-        return {
-          id: unit.id,
-          unit_number: unit.unit_number,
-          property_id: unit.property_id,
+        if (!tenant) return {
+          id: unit.id, unit_number: unit.unit_number, property_id: unit.property_id,
           property_name: (unit.properties as any)?.name || 'Unknown',
-          tenant_id: tenant?.id || null,
-          tenant_name: tenant?.name || null,
-          tenant_phone: tenant?.phone || null,
-          rent_amount: rentAmount,
-          payment_status: tenant ? getPaymentStatus(rentAmount, amountPaid) : 'unpaid',
-          amount_paid: amountPaid,
-          balance,
+          tenant_id: null, tenant_name: null, tenant_phone: null,
+          rent_amount: 0, payment_status: 'unpaid', amount_paid: 0, balance: 0,
+        };
+
+        const monthlyRent = Number(tenant.rent_amount) || 0;
+        const leaseStart = tenant.lease_start ? parseISO(tenant.lease_start) : new Date();
+        const comparisonDate = selectedDate ? startOfMonth(selectedDate) : startOfMonth(new Date());
+
+        // --- CALCULATION LOGIC ---
+        let firstMonthCharge = monthlyRent;
+
+        if (tenant.first_month_override !== null) {
+          firstMonthCharge = Number(tenant.first_month_override);
+        } else if (tenant.is_prorated) {
+          const daysInMonth = getDaysInMonth(leaseStart);
+          const daysRemaining = differenceInDays(endOfMonth(leaseStart), leaseStart) + 1;
+          firstMonthCharge = (monthlyRent / daysInMonth) * daysRemaining;
+        }
+
+        const nextMonthStart = startOfMonth(addMonths(startOfMonth(leaseStart), 1));
+        const fullMonthsCount = Math.max(0, differenceInMonths(comparisonDate, nextMonthStart) + 1);
+        
+        const cumulativeExpected = firstMonthCharge + (monthlyRent * fullMonthsCount) + (Number(tenant.opening_balance) || 0);
+        const totalPaidToDate = allPayments?.filter(p => p.tenant_id === tenant.id).reduce((s, p) => s + p.amount, 0) || 0;
+        const balance = Math.round(cumulativeExpected - totalPaidToDate);
+
+        return {
+          id: unit.id, unit_number: unit.unit_number, property_id: unit.property_id,
+          property_name: (unit.properties as any)?.name || 'Unknown',
+          tenant_id: tenant.id, tenant_name: tenant.name, tenant_phone: tenant.phone,
+          rent_amount: monthlyRent,
+          payment_status: totalPaidToDate >= cumulativeExpected - 5 ? 'paid' : totalPaidToDate > 0 ? 'partial' : 'unpaid',
+          amount_paid: allPayments?.filter(p => p.tenant_id === tenant.id && p.payment_month === dateKey).reduce((s, p) => s + p.amount, 0) || 0,
+          balance: balance,
         };
       });
 
-      const occupiedUnits = dashboardUnits.filter(u => u.tenant_id);
-      const paidUnits = occupiedUnits.filter(u => u.payment_status === 'paid' || u.payment_status === 'overpaid');
-      const totalCollected = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-      const totalArrearsValue = occupiedUnits.reduce((sum, u) => sum + (u.balance > 0 ? u.balance : 0), 0);
-      const totalDeposits = tenants?.reduce((sum, t) => sum + (Number(t.security_deposit) || 0), 0) || 0;
-
-      const stats: DashboardStats = {
-        totalUnits: dashboardUnits.length,
-        occupiedUnits: occupiedUnits.length,
-        paidUnits: paidUnits.length,
-        arrearsUnits: occupiedUnits.length - paidUnits.length,
-        totalCollected,
-        totalArrearsValue,
-        totalDeposits,
+      return {
+        units: dashboardUnits,
+        stats: {
+          totalUnits: dashboardUnits.length,
+          occupiedUnits: dashboardUnits.filter(u => u.tenant_id).length,
+          paidUnits: dashboardUnits.filter(u => u.payment_status === 'paid').length,
+          arrearsUnits: dashboardUnits.filter(u => u.tenant_id && u.payment_status !== 'paid').length,
+          totalCollected: allPayments?.filter(p => p.payment_month === dateKey).reduce((s, p) => s + p.amount, 0) || 0,
+          totalArrearsValue: dashboardUnits.reduce((sum, u) => sum + (u.balance > 0 ? u.balance : 0), 0),
+          totalDeposits: tenants?.reduce((sum, t) => sum + (Number(t.security_deposit) || 0), 0) || 0,
+        },
       };
-
-      return { units: dashboardUnits, stats };
     },
   });
 }

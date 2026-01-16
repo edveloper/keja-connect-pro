@@ -3,9 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCreatePayment, useCurrentMonthPayments, calculatePaymentStatus, useDeletePayment } from "@/hooks/usePayments";
-import { CheckCircle, AlertTriangle, TrendingUp, Loader2, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useCreatePayment, usePayments } from "@/hooks/usePayments";
+import { Loader2, Calendar, History } from "lucide-react";
+import { differenceInMonths, startOfMonth, parseISO, getDaysInMonth, differenceInDays, endOfMonth, addMonths } from "date-fns";
 
 interface RecordPaymentDialogProps {
   open: boolean;
@@ -15,109 +15,73 @@ interface RecordPaymentDialogProps {
     name: string;
     rent_amount: number;
     opening_balance?: number;
+    lease_start?: string;
+    is_prorated?: boolean;
+    first_month_override?: number;
   };
 }
 
 export function RecordPaymentDialog({ open, onOpenChange, tenant }: RecordPaymentDialogProps) {
   const [amount, setAmount] = useState("");
   const [mpesaCode, setMpesaCode] = useState("");
-  
-  const createPayment = useCreatePayment();
-  const deletePayment = useDeletePayment();
-  const { data: allPayments } = useCurrentMonthPayments();
+  const { mutate: createPayment, isPending } = useCreatePayment();
+  const { data: allPayments } = usePayments();
   
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const tenantPayments = allPayments?.filter(p => p.tenant_id === tenant.id) || [];
-  
-  // Calculate status including the opening balance/arrears
-  const openingBalance = Number(tenant.opening_balance) || 0;
-  const currentStatus = calculatePaymentStatus(tenant.rent_amount, tenantPayments);
-  
-  // Adjusted balance including historical arrears
-  const effectiveArrears = currentStatus.balance - openingBalance;
+  const monthlyRent = Number(tenant.rent_amount) || 0;
+  const leaseStart = tenant.lease_start ? parseISO(tenant.lease_start) : new Date();
 
-  const paymentAmount = parseFloat(amount) || 0;
-  const projectedBalance = (currentStatus.totalPaid + paymentAmount) - (tenant.rent_amount + openingBalance);
-  
+  // Calculation Logic (Matches Dashboard)
+  let firstMonthCharge = monthlyRent;
+  if (tenant.first_month_override !== undefined && tenant.first_month_override !== null) {
+    firstMonthCharge = Number(tenant.first_month_override);
+  } else if (tenant.is_prorated) {
+    const daysInMonth = getDaysInMonth(leaseStart);
+    const daysRemaining = differenceInDays(endOfMonth(leaseStart), leaseStart) + 1;
+    firstMonthCharge = (monthlyRent / daysInMonth) * daysRemaining;
+  }
+
+  const fullMonths = Math.max(0, differenceInMonths(startOfMonth(new Date()), startOfMonth(addMonths(leaseStart, 1))) + 1);
+  const cumulativeExpected = firstMonthCharge + (monthlyRent * fullMonths) + (Number(tenant.opening_balance) || 0);
+
+  const tenantPayments = allPayments?.filter(p => p.tenant_id === tenant.id) || [];
+  const totalPaid = tenantPayments.reduce((sum, p) => sum + p.amount, 0);
+  const balanceDue = Math.round(cumulativeExpected - totalPaid);
+
   useEffect(() => {
     if (open) {
-      const totalDue = (tenant.rent_amount + openingBalance) - currentStatus.totalPaid;
-      setAmount(totalDue > 0 ? totalDue.toString() : "0");
+      setAmount(balanceDue > 0 ? balanceDue.toString() : "0");
       setMpesaCode("");
     }
-  }, [open, tenant.rent_amount, openingBalance, currentStatus.totalPaid]);
+  }, [open, balanceDue]);
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (paymentAmount <= 0) return;
-    createPayment.mutate({
-      tenant_id: tenant.id,
-      amount: paymentAmount,
-      payment_month: currentMonth,
-      mpesa_code: mpesaCode || null,
-    }, { onSuccess: () => onOpenChange(false) });
-  };
-  
-  const getStatusInfo = () => {
-    if (projectedBalance < 0) return { icon: AlertTriangle, label: `KES ${Math.abs(projectedBalance).toLocaleString()} remaining`, color: "text-amber-600", bgColor: "bg-amber-50" };
-    if (projectedBalance === 0) return { icon: CheckCircle, label: "Fully settled", color: "text-emerald-600", bgColor: "bg-emerald-50" };
-    return { icon: TrendingUp, label: `KES ${projectedBalance.toLocaleString()} credit`, color: "text-blue-600", bgColor: "bg-blue-50" };
-  };
-  
-  const statusInfo = paymentAmount > 0 ? getStatusInfo() : null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm mx-4">
-        <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
-          <DialogDescription>Payments for {tenant.name} ({currentMonth})</DialogDescription>
-        </DialogHeader>
-        
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-            <div className="flex justify-between text-xs"><span>Current Rent:</span><span className="font-bold">KES {tenant.rent_amount.toLocaleString()}</span></div>
-            {openingBalance !== 0 && (
-              <div className="flex justify-between text-xs text-amber-700"><span>Prev. Arrears:</span><span className="font-bold">KES {openingBalance.toLocaleString()}</span></div>
-            )}
-            <div className="flex justify-between text-xs border-t pt-1 mt-1"><span>Total Paid:</span><span className="font-bold text-emerald-600">KES {currentStatus.totalPaid.toLocaleString()}</span></div>
+          <div className="p-3 bg-muted/50 rounded-lg text-xs space-y-1">
+            <div className="flex justify-between"><span>Accrued Dues:</span><span>KES {Math.round(cumulativeExpected).toLocaleString()}</span></div>
+            <div className="flex justify-between text-emerald-600"><span>Paid:</span><span>KES {totalPaid.toLocaleString()}</span></div>
+            <div className="flex justify-between border-t pt-1 font-bold text-red-600"><span>Balance:</span><span>KES {balanceDue.toLocaleString()}</span></div>
           </div>
 
-          {/* List existing payments for the month to allow Deletion (Editing via deletion) */}
-          {tenantPayments.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Recent Records</Label>
+          <form onSubmit={(e) => { e.preventDefault(); createPayment({ tenant_id: tenant.id, amount: parseFloat(amount), payment_month: currentMonth, mpesa_code: mpesaCode }, { onSuccess: () => onOpenChange(false) }); }} className="space-y-3">
+            <div className="space-y-1"><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
+            <div className="space-y-1"><Label>M-Pesa Code</Label><Input value={mpesaCode} onChange={(e) => setMpesaCode(e.target.value.toUpperCase())} maxLength={10} /></div>
+            <Button type="submit" className="w-full" disabled={isPending}>{isPending ? <Loader2 className="animate-spin h-4 w-4" /> : "Save Payment"}</Button>
+          </form>
+
+          <div className="border-t pt-3">
+            <Label className="text-[10px] font-bold uppercase flex items-center gap-1 mb-2"><History className="h-3 w-3" /> Recent History</Label>
+            <div className="max-h-32 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
               {tenantPayments.map(p => (
-                <div key={p.id} className="flex justify-between items-center bg-white border rounded-md p-2 text-sm">
-                  <span>KES {p.amount.toLocaleString()} <span className="text-[10px] text-muted-foreground">({p.mpesa_code || 'Cash'})</span></span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deletePayment.mutate(p.id)} disabled={deletePayment.isPending}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div key={p.id} className="flex justify-between p-2 bg-slate-50 border rounded text-[10px]">
+                  <span>{p.payment_month} ({p.mpesa_code || 'Cash'})</span><span className="font-bold">KES {p.amount.toLocaleString()}</span>
                 </div>
               ))}
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="amount">New Payment Amount</Label>
-              <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="mpesa-code">M-Pesa Code</Label>
-              <Input id="mpesa-code" placeholder="Optional" value={mpesaCode} onChange={(e) => setMpesaCode(e.target.value.toUpperCase())} maxLength={10} />
-            </div>
-            {statusInfo && (
-              <div className={cn("p-3 rounded-lg flex items-center gap-2", statusInfo.bgColor)}>
-                <statusInfo.icon className={cn("h-4 w-4", statusInfo.color)} />
-                <span className={cn("font-medium text-xs", statusInfo.color)}>Outcome: {statusInfo.label}</span>
-              </div>
-            )}
-            <div className="flex gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancel</Button>
-              <Button type="submit" className="flex-1" disabled={createPayment.isPending}>{createPayment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button>
-            </div>
-          </form>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

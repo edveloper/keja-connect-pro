@@ -5,7 +5,7 @@ import { useDashboardData } from "@/hooks/useDashboard";
 import { useTotalExpenses } from "@/hooks/useExpenses";
 import { formatKES } from "@/lib/number-formatter";
 import { 
-  Building2, CheckCircle2, AlertTriangle, Banknote, 
+  Building2, AlertTriangle, Banknote, 
   Wallet, ChevronDown, Home, DoorOpen, ChevronLeft, 
   ChevronRight, ShieldCheck, Calendar 
 } from "lucide-react";
@@ -16,20 +16,18 @@ import { useState, useMemo } from "react";
 import { format, addMonths, subMonths } from "date-fns";
 
 export default function Dashboard() {
-  // 1. State for Date Filtering
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   
-  // 2. Data Fetching (passing selectedDate to hooks)
   const { data, isLoading } = useDashboardData(selectedDate);
+  // Pass the month key to expenses to filter expenses by month too
+  const monthKey = selectedDate ? format(selectedDate, "yyyy-MM") : null;
   const { data: totalExpenses, isLoading: expensesLoading } = useTotalExpenses();
 
-  // 3. UI State
   const [occupiedOpen, setOccupiedOpen] = useState(true);
   const [vacantOpen, setVacantOpen] = useState(false);
 
   const dateLabel = selectedDate ? format(selectedDate, "MMMM yyyy") : "All-Time Records";
 
-  // 4. Sorting & Data Preparation
   const naturalSort = (a: any, b: any) => 
     a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true, sensitivity: 'base' });
 
@@ -56,7 +54,7 @@ export default function Dashboard() {
   return (
     <PageContainer title="Dashboard" subtitle="Property Overview">
       
-      {/* --- DATE SELECTOR SECTION --- */}
+      {/* --- DATE SELECTOR --- */}
       <div className="flex items-center justify-between mb-6 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
         <Button 
           variant="ghost" 
@@ -66,7 +64,7 @@ export default function Dashboard() {
           <ChevronLeft className="h-5 w-5 text-slate-400" />
         </Button>
         
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center text-center">
           <div className="flex items-center gap-2">
             <Calendar className="h-3.5 w-3.5 text-primary" />
             <h2 className="font-bold text-sm sm:text-base text-slate-800">{dateLabel}</h2>
@@ -75,7 +73,7 @@ export default function Dashboard() {
             onClick={() => setSelectedDate(selectedDate ? null : new Date())}
             className="text-[10px] text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline"
           >
-            {selectedDate ? "Switch to All-Time" : "Back to Monthly"}
+            {selectedDate ? "Switch to All-Time" : "Back to Monthly View"}
           </button>
         </div>
 
@@ -100,27 +98,31 @@ export default function Dashboard() {
           </>
         ) : (
           <>
-            <StatsCard label="Total Units" value={data?.stats.totalUnits || 0} icon={Building2} />
+            <StatsCard 
+              label="Occupied" 
+              value={`${data?.stats.occupiedUnits}/${data?.stats.totalUnits}`} 
+              icon={Building2} 
+            />
             
             <StatsCard 
-              label="Rent Collected" 
+              label="Month's Collection" 
               value={formatKES(data?.stats.totalCollected || 0)} 
               icon={Banknote} 
               variant="success" 
             />
 
             <StatsCard 
-              label={`Paid (${data?.stats.paidUnits} Units)`} 
-              value={formatKES(data?.stats.totalCollected || 0)} 
-              icon={CheckCircle2} 
-              variant="success" 
+              label="Total Arrears" 
+              value={formatKES(data?.stats.totalArrearsValue || 0)} 
+              icon={AlertTriangle} 
+              variant={(data?.stats.totalArrearsValue || 0) > 0 ? "danger" : "success"} 
             />
 
             <StatsCard 
-              label={`Arrears (${data?.stats.arrearsUnits} Units)`} 
-              value={formatKES(data?.stats.totalArrearsValue || 0)} 
-              icon={AlertTriangle} 
-              variant={(data?.stats.arrearsUnits || 0) > 0 ? "danger" : "default"} 
+              label="Monthly Expenses" 
+              value={formatKES(totalExpenses || 0)} 
+              icon={Wallet} 
+              variant="danger" 
             />
 
             <div className="col-span-2">
@@ -128,16 +130,7 @@ export default function Dashboard() {
                 label="Total Security Deposits Held" 
                 value={formatKES(data?.stats.totalDeposits || 0)} 
                 icon={ShieldCheck} 
-                className="bg-blue-50/50 text-white border-none shadow-md"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <StatsCard 
-                label="Month Expenses" 
-                value={formatKES(totalExpenses || 0)} 
-                icon={Wallet} 
-                variant="danger" 
+                className="bg-blue-50/80 text-blue-900 border-blue-100 shadow-sm"
               />
             </div>
           </>
@@ -154,23 +147,19 @@ export default function Dashboard() {
           <div className="text-center py-12 px-6 bg-card rounded-2xl border border-dashed border-border">
             <Building2 className="h-8 w-8 text-slate-300 mx-auto mb-4" />
             <h3 className="font-semibold text-foreground mb-2">No units yet</h3>
-            <p className="text-xs text-muted-foreground">Add units to start tracking payments.</p>
           </div>
         ) : (
           <>
-            {/* Occupied Units Section */}
             <Collapsible open={occupiedOpen} onOpenChange={setOccupiedOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-card hover:bg-slate-50 transition-colors">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Home className="h-4 w-4 text-primary" />
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <Home className="h-4 w-4" />
                   </div>
                   <span className="text-sm font-semibold">Occupied Units</span>
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{occupiedUnits.length}</span>
                 </div>
-                <div className="p-1 rounded-md bg-slate-100">
-                  <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${occupiedOpen ? 'rotate-180' : ''}`} />
-                </div>
+                <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${occupiedOpen ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
                 {sortedOccupied.map((unit) => (
@@ -189,19 +178,16 @@ export default function Dashboard() {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Vacant Units Section */}
             <Collapsible open={vacantOpen} onOpenChange={setVacantOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-card hover:bg-slate-50 transition-colors">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-slate-100">
-                    <DoorOpen className="h-4 w-4 text-slate-500" />
+                  <div className="p-2 rounded-lg bg-slate-100 text-slate-500">
+                    <DoorOpen className="h-4 w-4" />
                   </div>
                   <span className="text-sm font-semibold">Vacant Units</span>
                   <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">{vacantUnits.length}</span>
                 </div>
-                <div className="p-1 rounded-md bg-slate-100">
-                  <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${vacantOpen ? 'rotate-180' : ''}`} />
-                </div>
+                <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${vacantOpen ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
                 {vacantUnits.map((unit) => (

@@ -62,8 +62,20 @@ export function useExpenses(month?: string | null) {
   });
 }
 
-export function useTotalExpenses(selectedDate: Date | null) {
-  const monthString = selectedDate ? selectedDate.toISOString().slice(0, 7) : null;
+/**
+ * FIXED: Handles both Date objects and ISO strings to prevent .toISOString() crashes
+ */
+export function useTotalExpenses(selectedDate: Date | string | null) {
+  let monthString: string | null = null;
+
+  if (selectedDate instanceof Date) {
+    monthString = selectedDate.toISOString().slice(0, 7);
+  } else if (typeof selectedDate === 'string') {
+    // If it's already a string like "2024-05", use it. 
+    // If it's a full ISO string, slice it.
+    monthString = selectedDate.includes('-') ? selectedDate.slice(0, 7) : selectedDate;
+  }
+
   const { data: expenses, isLoading } = useExpenses(monthString);
   const total = expenses?.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0) || 0;
   return { data: total, isLoading };

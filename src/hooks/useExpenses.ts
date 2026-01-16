@@ -93,7 +93,21 @@ export function useCreateExpense() {
   });
 }
 
-// THIS WAS MISSING AND CAUSED THE VERCEL ERROR
+export function useDeleteExpense() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toast({ title: 'Deleted', description: 'Expense record removed' });
+    },
+  });
+}
+
 export function useCreateCategory() {
   const queryClient = useQueryClient();
   return useMutation({

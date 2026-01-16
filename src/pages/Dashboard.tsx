@@ -4,24 +4,35 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { useDashboardData } from "@/hooks/useDashboard";
 import { useTotalExpenses } from "@/hooks/useExpenses";
 import { formatKES } from "@/lib/number-formatter";
-import { Building2, CheckCircle2, AlertTriangle, Banknote, Wallet, ChevronDown, Home, DoorOpen } from "lucide-react";
+import { 
+  Building2, CheckCircle2, AlertTriangle, Banknote, 
+  Wallet, ChevronDown, Home, DoorOpen, ChevronLeft, 
+  ChevronRight, ShieldCheck, Calendar 
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
+import { format, addMonths, subMonths } from "date-fns";
 
 export default function Dashboard() {
-  const { data, isLoading } = useDashboardData();
+  // 1. State for Date Filtering
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  
+  // 2. Data Fetching (passing selectedDate to hooks)
+  const { data, isLoading } = useDashboardData(selectedDate);
   const { data: totalExpenses, isLoading: expensesLoading } = useTotalExpenses();
-  const currentMonth = new Date().toLocaleDateString("en-KE", { month: "long", year: "numeric" });
 
+  // 3. UI State
   const [occupiedOpen, setOccupiedOpen] = useState(true);
   const [vacantOpen, setVacantOpen] = useState(false);
 
-  // Helper for Natural Sorting (1, 2, 10 instead of 1, 10, 2)
+  const dateLabel = selectedDate ? format(selectedDate, "MMMM yyyy") : "All-Time Records";
+
+  // 4. Sorting & Data Preparation
   const naturalSort = (a: any, b: any) => 
     a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true, sensitivity: 'base' });
 
-  // Separate and sort units
   const allUnits = data?.units || [];
   
   const occupiedUnits = useMemo(() => 
@@ -32,27 +43,52 @@ export default function Dashboard() {
     allUnits.filter(u => !u.tenant_id).sort(naturalSort), 
   [allUnits]);
 
-  // Secondary sort for Occupied: status first, then unit number
   const sortedOccupied = useMemo(() => {
     return [...occupiedUnits].sort((a, b) => {
       const statusOrder = { unpaid: 0, partial: 1, paid: 2, overpaid: 3 };
-      if (statusOrder[a.payment_status as keyof typeof statusOrder] !== statusOrder[b.payment_status as keyof typeof statusOrder]) {
-        return statusOrder[a.payment_status as keyof typeof statusOrder] - statusOrder[b.payment_status as keyof typeof statusOrder];
-      }
+      const statusA = statusOrder[a.payment_status as keyof typeof statusOrder];
+      const statusB = statusOrder[b.payment_status as keyof typeof statusOrder];
+      if (statusA !== statusB) return statusA - statusB;
       return naturalSort(a, b);
     });
   }, [occupiedUnits]);
 
-  const stats = data?.stats || {
-    totalUnits: 0,
-    occupiedUnits: 0,
-    paidUnits: 0,
-    arrearsUnits: 0,
-    totalCollected: 0,
-  };
-
   return (
-    <PageContainer title="Dashboard" subtitle={currentMonth}>
+    <PageContainer title="Dashboard" subtitle="Property Overview">
+      
+      {/* --- DATE SELECTOR SECTION --- */}
+      <div className="flex items-center justify-between mb-6 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setSelectedDate(prev => prev ? subMonths(prev, 1) : new Date())}
+        >
+          <ChevronLeft className="h-5 w-5 text-slate-400" />
+        </Button>
+        
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5 text-primary" />
+            <h2 className="font-bold text-sm sm:text-base text-slate-800">{dateLabel}</h2>
+          </div>
+          <button 
+            onClick={() => setSelectedDate(selectedDate ? null : new Date())}
+            className="text-[10px] text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline"
+          >
+            {selectedDate ? "Switch to All-Time" : "Back to Monthly"}
+          </button>
+        </div>
+
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setSelectedDate(prev => prev ? addMonths(prev, 1) : new Date())}
+        >
+          <ChevronRight className="h-5 w-5 text-slate-400" />
+        </Button>
+      </div>
+
+      {/* --- STATS GRID --- */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         {isLoading || expensesLoading ? (
           <>
@@ -64,23 +100,41 @@ export default function Dashboard() {
           </>
         ) : (
           <>
-            <StatsCard label="Total Units" value={stats.totalUnits} icon={Building2} />
+            <StatsCard label="Total Units" value={data?.stats.totalUnits || 0} icon={Building2} />
+            
             <StatsCard 
-              label="Collected" 
-              value={formatKES(stats.totalCollected)} 
+              label="Rent Collected" 
+              value={formatKES(data?.stats.totalCollected || 0)} 
               icon={Banknote} 
               variant="success" 
             />
-            <StatsCard label="Paid" value={stats.paidUnits} icon={CheckCircle2} variant="success" />
+
             <StatsCard 
-              label="Arrears" 
-              value={stats.arrearsUnits} 
-              icon={AlertTriangle} 
-              variant={stats.arrearsUnits > 0 ? "danger" : "default"} 
+              label={`Paid (${data?.stats.paidUnits} Units)`} 
+              value={formatKES(data?.stats.totalCollected || 0)} 
+              icon={CheckCircle2} 
+              variant="success" 
             />
+
+            <StatsCard 
+              label={`Arrears (${data?.stats.arrearsUnits} Units)`} 
+              value={formatKES(data?.stats.totalArrearsValue || 0)} 
+              icon={AlertTriangle} 
+              variant={(data?.stats.arrearsUnits || 0) > 0 ? "danger" : "default"} 
+            />
+
             <div className="col-span-2">
               <StatsCard 
-                label="Expenses" 
+                label="Total Security Deposits Held" 
+                value={formatKES(data?.stats.totalDeposits || 0)} 
+                icon={ShieldCheck} 
+                className="bg-blue-50/50 text-white border-none shadow-md"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <StatsCard 
+                label="Month Expenses" 
                 value={formatKES(totalExpenses || 0)} 
                 icon={Wallet} 
                 variant="danger" 
@@ -90,6 +144,7 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* --- UNIT LISTS --- */}
       <div className="space-y-4">
         {isLoading ? (
           <div className="space-y-4">
@@ -97,67 +152,65 @@ export default function Dashboard() {
           </div>
         ) : allUnits.length === 0 ? (
           <div className="text-center py-12 px-6 bg-card rounded-2xl border border-dashed border-border">
-            <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto mb-4">
-              <Building2 className="h-8 w-8 text-primary" />
-            </div>
+            <Building2 className="h-8 w-8 text-slate-300 mx-auto mb-4" />
             <h3 className="font-semibold text-foreground mb-2">No units yet</h3>
-            <p className="text-sm text-muted-foreground">Add properties and units to get started.</p>
+            <p className="text-xs text-muted-foreground">Add units to start tracking payments.</p>
           </div>
         ) : (
           <>
+            {/* Occupied Units Section */}
             <Collapsible open={occupiedOpen} onOpenChange={setOccupiedOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl hover:border-primary/30 transition-all duration-200 shadow-card">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-card hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/10">
                     <Home className="h-4 w-4 text-primary" />
                   </div>
-                  <span className="text-sm font-semibold text-foreground">Occupied Units</span>
-                  <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">{occupiedUnits.length}</span>
+                  <span className="text-sm font-semibold">Occupied Units</span>
+                  <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{occupiedUnits.length}</span>
                 </div>
-                <div className={`p-1.5 rounded-lg bg-muted transition-transform duration-200 ${occupiedOpen ? 'rotate-180' : ''}`}>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <div className="p-1 rounded-md bg-slate-100">
+                  <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${occupiedOpen ? 'rotate-180' : ''}`} />
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
-                {sortedOccupied.map((unit, index) => (
-                  <div key={unit.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                    <UnitCard
-                      unitNumber={unit.unit_number}
-                      propertyName={unit.property_name}
-                      tenantName={unit.tenant_name || undefined}
-                      tenantPhone={unit.tenant_phone || undefined}
-                      rentAmount={unit.rent_amount || undefined}
-                      paymentStatus={unit.payment_status}
-                      amountPaid={unit.amount_paid}
-                      balance={unit.balance}
-                    />
-                  </div>
+                {sortedOccupied.map((unit) => (
+                  <UnitCard 
+                    key={unit.id} 
+                    unitNumber={unit.unit_number} 
+                    propertyName={unit.property_name}
+                    tenantName={unit.tenant_name || undefined}
+                    tenantPhone={unit.tenant_phone || undefined}
+                    rentAmount={unit.rent_amount || undefined}
+                    paymentStatus={unit.payment_status}
+                    amountPaid={unit.amount_paid}
+                    balance={unit.balance}
+                  />
                 ))}
               </CollapsibleContent>
             </Collapsible>
 
+            {/* Vacant Units Section */}
             <Collapsible open={vacantOpen} onOpenChange={setVacantOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl hover:border-primary/30 transition-all duration-200 shadow-card">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-card hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-muted">
-                    <DoorOpen className="h-4 w-4 text-muted-foreground" />
+                  <div className="p-2 rounded-lg bg-slate-100">
+                    <DoorOpen className="h-4 w-4 text-slate-500" />
                   </div>
-                  <span className="text-sm font-semibold text-foreground">Vacant Units</span>
-                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">{vacantUnits.length}</span>
+                  <span className="text-sm font-semibold">Vacant Units</span>
+                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">{vacantUnits.length}</span>
                 </div>
-                <div className={`p-1.5 rounded-lg bg-muted transition-transform duration-200 ${vacantOpen ? 'rotate-180' : ''}`}>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <div className="p-1 rounded-md bg-slate-100">
+                  <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${vacantOpen ? 'rotate-180' : ''}`} />
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
-                {vacantUnits.map((unit, index) => (
-                  <div key={unit.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                    <UnitCard
-                      unitNumber={unit.unit_number}
-                      propertyName={unit.property_name}
-                      paymentStatus={unit.payment_status}
-                    />
-                  </div>
+                {vacantUnits.map((unit) => (
+                  <UnitCard 
+                    key={unit.id} 
+                    unitNumber={unit.unit_number} 
+                    propertyName={unit.property_name}
+                    paymentStatus={unit.payment_status}
+                  />
                 ))}
               </CollapsibleContent>
             </Collapsible>

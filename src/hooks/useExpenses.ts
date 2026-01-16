@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
-// Export the type so ExpenseForm can use it
 export type ExpenseCategory = Database['public']['Tables']['expense_categories']['Row'];
 type ExpenseRow = Database['public']['Tables']['expenses']['Row'];
 
@@ -52,10 +51,13 @@ export function useCreateCategory() {
   });
 }
 
-export function useExpenses(month?: string) {
-  const currentMonth = month || new Date().toISOString().slice(0, 7);
+// MODIFIED: Supports month filtering and "All-Time" (null)
+export function useExpenses(month?: string | null) {
+  // If undefined is passed, default to current month. If null is passed, it stays null (All-Time).
+  const filterMonth = month === undefined ? new Date().toISOString().slice(0, 7) : month;
+
   return useQuery({
-    queryKey: ['expenses', currentMonth],
+    queryKey: ['expenses', filterMonth],
     queryFn: async (): Promise<Expense[]> => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return [];
@@ -64,12 +66,18 @@ export function useExpenses(month?: string) {
       if (!properties || properties.length === 0) return [];
       const propertyIds = properties.map(p => p.id);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('expenses')
         .select('*, expense_categories!expenses_category_id_fkey(name), properties!expenses_property_id_fkey(name), units!expenses_unit_id_fkey(unit_number)')
         .in('property_id', propertyIds)
-        .eq('expense_month', currentMonth)
         .order('expense_date', { ascending: false });
+
+      // Only apply month filter if filterMonth is NOT null
+      if (filterMonth) {
+        query = query.eq('expense_month', filterMonth);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data as unknown as Expense[];
@@ -77,9 +85,9 @@ export function useExpenses(month?: string) {
   });
 }
 
-export function useTotalExpenses(month?: string) {
-  const currentMonth = month || new Date().toISOString().slice(0, 7);
-  const { data: expenses, isLoading } = useExpenses(currentMonth);
+// MODIFIED: Simplified to pass the month/null value through
+export function useTotalExpenses(month?: string | null) {
+  const { data: expenses, isLoading } = useExpenses(month);
   const total = expenses?.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0) || 0;
   return { data: total, isLoading };
 }
@@ -91,7 +99,11 @@ export function useCreateExpense() {
       const expenseDate = expense.expense_date || new Date().toISOString().slice(0, 10);
       const { data, error } = await supabase
         .from('expenses')
-        .insert({ ...expense, expense_date: expenseDate, expense_month: expenseDate.slice(0, 7) })
+        .insert({ 
+          ...expense, 
+          expense_date: expenseDate, 
+          expense_month: expenseDate.slice(0, 7) 
+        })
         .select().single();
       if (error) throw error;
       return data;

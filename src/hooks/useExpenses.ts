@@ -103,3 +103,15 @@ export function useDeleteExpense() {
     },
   });
 }
+
+export function useTotalExpenses(month?: string) {
+  const currentMonth = month || new Date().toISOString().slice(0, 7);
+  const { data: expenses, isLoading } = useExpenses(currentMonth);
+
+  const total = expenses?.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0) || 0;
+
+  return {
+    data: total,
+    isLoading
+  };
+}

@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
-// Manually define simpler types
 type Tenant = Database['public']['Tables']['tenants']['Row'];
 
 type TenantWithRelations = Tenant & {
@@ -22,35 +21,26 @@ export function useTenants() {
     queryKey: ['tenants'],
     queryFn: async (): Promise<TenantWithRelations[]> => {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session?.user?.id) return [];
 
-      // STEP 1: Get user's properties first
-      // @ts-ignore
       const { data: properties, error: propError } = await supabase
         .from('properties')
         .select('id')
         .eq('user_id', session.user.id);
 
       if (propError) throw propError;
-      
       if (!properties || properties.length === 0) return [];
       const propertyIds = properties.map(p => p.id);
 
-      // STEP 2: Get units belonging to those properties
-      // @ts-ignore
       const { data: units, error: unitError } = await supabase
         .from('units')
         .select('id')
         .in('property_id', propertyIds);
 
       if (unitError) throw unitError;
-      
       if (!units || units.length === 0) return [];
       const unitIds = units.map(u => u.id);
 
-      // STEP 3: Get tenants in those units
-      // @ts-ignore - Bypassing Supabase type inference
       const { data, error } = await supabase
         .from('tenants')
         .select(`
@@ -65,7 +55,7 @@ export function useTenants() {
         .order('name', { ascending: true });
       
       if (error) throw error;
-      return data as TenantWithRelations[];
+      return data as unknown as TenantWithRelations[];
     },
   });
 }
@@ -76,13 +66,11 @@ export function useUserProperties() {
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return [];
-
       const { data, error } = await supabase
         .from('properties')
         .select('id, name')
         .eq('user_id', session.user.id)
         .order('name');
-
       if (error) throw error;
       return data;
     },
@@ -102,10 +90,11 @@ export function useCreateTenant() {
         phone: string; 
         rent_amount: number; 
         unit_id?: string | null;
+        opening_balance?: number;
+        security_deposit?: number;
       },
       addAnother?: boolean 
     }) => {
-      // @ts-ignore
       const { data, error } = await supabase
         .from('tenants')
         .insert(tenantData)
@@ -118,19 +107,10 @@ export function useCreateTenant() {
     onSuccess: ({ addAnother }) => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      
-      // Different toast message based on action
-      if (addAnother) {
-        toast({ 
-          title: 'Tenant Added', 
-          description: 'Ready to add another tenant' 
-        });
-      } else {
-        toast({ 
-          title: 'Success', 
-          description: 'Tenant added successfully' 
-        });
-      }
+      toast({ 
+        title: addAnother ? 'Tenant Added' : 'Success', 
+        description: addAnother ? 'Ready for next entry' : 'Tenant created successfully' 
+      });
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -143,21 +123,19 @@ export function useUpdateTenant() {
   
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Tenant> & { id: string }) => {
-      // @ts-ignore
       const { data, error } = await supabase
         .from('tenants')
         .update(updates)
         .eq('id', id)
         .select()
         .single();
-      
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast({ title: 'Success', description: 'Tenant updated successfully' });
+      toast({ title: 'Success', description: 'Tenant updated' });
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -167,21 +145,15 @@ export function useUpdateTenant() {
 
 export function useDeleteTenant() {
   const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async (id: string) => {
-      // @ts-ignore
-      const { error } = await supabase
-        .from('tenants')
-        .delete()
-        .eq('id', id);
-      
+      const { error } = await supabase.from('tenants').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast({ title: 'Success', description: 'Tenant removed successfully' });
+      toast({ title: 'Success', description: 'Tenant removed' });
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

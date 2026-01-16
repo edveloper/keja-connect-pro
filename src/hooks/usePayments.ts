@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
-// Manually define simpler types
+// Use the simpler manual type extraction
 type Payment = Database['public']['Tables']['payments']['Row'];
 
 export function usePayments() {
@@ -12,7 +12,7 @@ export function usePayments() {
     queryFn: async (): Promise<Payment[]> => {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // @ts-ignore - Bypassing Supabase type inference
+      // @ts-ignore - Bypassing deep type inference to prevent ts(2589)
       const { data, error } = await supabase
         .from('payments')
         .select('*')
@@ -22,42 +22,23 @@ export function usePayments() {
       if (error) throw error;
       return data as Payment[];
     },
-  });
-}
-
-export function usePaymentsByTenant(tenantId: string) {
-  return useQuery({
-    queryKey: ['payments', tenantId],
-    queryFn: async (): Promise<Payment[]> => {
-      // @ts-ignore
-      const { data, error } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('payment_date', { ascending: false });
-      
-      if (error) throw error;
-      return data as Payment[];
-    },
-    enabled: !!tenantId,
   });
 }
 
 export function useCurrentMonthPayments() {
   const currentMonth = new Date().toISOString().slice(0, 7); 
-  
   return useQuery({
     queryKey: ['payments', 'current-month', currentMonth],
     queryFn: async (): Promise<Payment[]> => {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // @ts-ignore
+      // @ts-ignore - Bypassing deep type inference
       const { data, error } = await supabase
         .from('payments')
         .select('*')
         .eq('user_id', session?.user?.id)
         .eq('payment_month', currentMonth);
-      
+        
       if (error) throw error;
       return data as Payment[];
     },
@@ -66,7 +47,6 @@ export function useCurrentMonthPayments() {
 
 export function useCreatePayment() {
   const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async (payment: { 
       tenant_id: string; 
@@ -74,13 +54,15 @@ export function useCreatePayment() {
       payment_month: string;
       mpesa_code?: string | null;
     }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
       // @ts-ignore
       const { data, error } = await supabase
         .from('payments')
-        .insert(payment)
+        .insert({ ...payment, user_id: session?.user?.id })
         .select()
         .single();
-      
+        
       if (error) throw error;
       return data;
     },
@@ -90,15 +72,29 @@ export function useCreatePayment() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast({ title: 'Success', description: 'Payment recorded' });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 }
 
-/**
- * EXPORTED HELPER: Calculates status for RecordPaymentDialog 
- */
+export function useDeletePayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // @ts-ignore
+      const { error } = await supabase.from('payments').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toast({ title: 'Removed', description: 'Payment record deleted' });
+    },
+  });
+}
+
 export function calculatePaymentStatus(
   rentAmount: number,
   paymentsThisMonth: Payment[]
@@ -112,7 +108,6 @@ export function calculatePaymentStatus(
     : 0;
     
   const balance = totalPaid - rentAmount;
-  
   if (totalPaid === 0) return { status: 'unpaid', totalPaid, balance };
   if (totalPaid < rentAmount) return { status: 'partial', totalPaid, balance };
   if (totalPaid === rentAmount) return { status: 'paid', totalPaid, balance };

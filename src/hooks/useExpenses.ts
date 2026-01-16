@@ -63,7 +63,6 @@ export function useExpenses(month?: string | null) {
 }
 
 export function useTotalExpenses(selectedDate: Date | null) {
-  // Pass formatted string to useExpenses
   const monthString = selectedDate ? selectedDate.toISOString().slice(0, 7) : null;
   const { data: expenses, isLoading } = useExpenses(monthString);
   const total = expenses?.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0) || 0;
@@ -90,6 +89,26 @@ export function useCreateExpense() {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast({ title: 'Success', description: 'Expense recorded' });
+    },
+  });
+}
+
+// THIS WAS MISSING AND CAUSED THE VERCEL ERROR
+export function useCreateCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .insert({ name })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+      toast({ title: 'Success', description: 'Category created' });
     },
   });
 }

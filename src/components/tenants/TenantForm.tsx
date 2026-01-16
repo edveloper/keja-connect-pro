@@ -8,13 +8,13 @@ import { useUnits } from "@/hooks/useUnits";
 import { useUserProperties } from "@/hooks/useTenants";
 import { cn } from "@/lib/utils";
 import type { Tables } from '@/integrations/supabase/types';
-import { AlertCircle, User, Phone, Banknote, Building2, Home } from "lucide-react";
+import { AlertCircle, User, Phone, Banknote, Building2, Home, Save, Plus } from "lucide-react";
 
 type Tenant = Tables<'tenants'>;
 
 interface TenantFormProps {
   tenant?: Tenant & { units?: { id: string; unit_number: string; properties?: { id: string; name: string } | null } | null };
-  onSubmit: (data: { name: string; phone: string; rent_amount: number; unit_id: string | null }) => void;
+  onSubmit: (data: { name: string; phone: string; rent_amount: number; unit_id: string | null }, addAnother?: boolean) => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -59,21 +59,36 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const resetForm = () => {
+    setName("");
+    setPhone("");
+    setRentAmount("");
+    setPhoneError("");
+    // Keep property selected for convenience, but reset unit
+    setUnitId(null);
+  };
+
+  const handleSubmit = (e: React.FormEvent, addAnother = false) => {
     e.preventDefault();
     if (!name.trim() || !validatePhone(phone)) return;
     
-    onSubmit({
+    const formData = {
       name: name.trim(),
       phone: normalizeKenyanPhone(phone),
       rent_amount: parseInt(rentAmount) || 0,
       unit_id: unitId,
-    });
+    };
+    
+    onSubmit(formData, addAnother);
+    
+    // Reset form if user wants to add another
+    if (addAnother) {
+      resetForm();
+    }
   };
 
   return (
-    /* Added w-full and px-0 to ensure no weird left-side gaps */
-    <form onSubmit={handleSubmit} className="space-y-4 w-full mx-auto">
+    <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4 w-full mx-auto">
       <div className="space-y-3">
         <div className="space-y-2">
           <Label className="text-xs font-bold uppercase text-muted-foreground">Tenant Information</Label>
@@ -135,9 +150,25 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
       </div>
 
       <div className="flex flex-col gap-2 pt-4">
+        {/* Only show "Save & Add Another" when creating a new tenant, not editing */}
+        {!tenant && (
+          <Button 
+            type="button" 
+            onClick={(e) => handleSubmit(e, true)}
+            disabled={isLoading || !unitId} 
+            variant="outline"
+            className="w-full h-12 border-primary/50 hover:bg-primary/10"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Save & Add Another
+          </Button>
+        )}
+        
         <Button type="submit" disabled={isLoading || !unitId} className="w-full h-12 shadow-md">
-          {isLoading ? "Saving..." : tenant ? "Update Details" : "Add Tenant"}
+          <Save className="h-4 w-4 mr-2" />
+          {isLoading ? "Saving..." : tenant ? "Update Details" : "Save & Close"}
         </Button>
+        
         <Button type="button" variant="ghost" onClick={onCancel} className="w-full h-12 text-muted-foreground">
           Cancel
         </Button>

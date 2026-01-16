@@ -93,26 +93,44 @@ export function useCreateTenant() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (tenant: { 
-      name: string; 
-      phone: string; 
-      rent_amount: number; 
-      unit_id?: string | null;
+    mutationFn: async ({ 
+      tenantData, 
+      addAnother 
+    }: { 
+      tenantData: { 
+        name: string; 
+        phone: string; 
+        rent_amount: number; 
+        unit_id?: string | null;
+      },
+      addAnother?: boolean 
     }) => {
       // @ts-ignore
       const { data, error } = await supabase
         .from('tenants')
-        .insert(tenant)
+        .insert(tenantData)
         .select()
         .single();
       
       if (error) throw error;
-      return data;
+      return { data, addAnother };
     },
-    onSuccess: () => {
+    onSuccess: ({ addAnother }) => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast({ title: 'Success', description: 'Tenant added successfully' });
+      
+      // Different toast message based on action
+      if (addAnother) {
+        toast({ 
+          title: 'Tenant Added', 
+          description: 'Ready to add another tenant' 
+        });
+      } else {
+        toast({ 
+          title: 'Success', 
+          description: 'Tenant added successfully' 
+        });
+      }
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

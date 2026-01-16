@@ -3,6 +3,7 @@ import { UnitCard } from "@/components/dashboard/UnitCard";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { useDashboardData } from "@/hooks/useDashboard";
 import { useTotalExpenses } from "@/hooks/useExpenses";
+import { formatKES } from "@/lib/number-formatter";
 import { Building2, CheckCircle2, AlertTriangle, Banknote, Wallet, ChevronDown, Home, DoorOpen } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -66,7 +67,7 @@ export default function Dashboard() {
             <StatsCard label="Total Units" value={stats.totalUnits} icon={Building2} />
             <StatsCard 
               label="Collected" 
-              value={`KES ${(stats.totalCollected / 1000).toFixed(0)}K`} 
+              value={formatKES(stats.totalCollected)} 
               icon={Banknote} 
               variant="success" 
             />
@@ -80,7 +81,7 @@ export default function Dashboard() {
             <div className="col-span-2">
               <StatsCard 
                 label="Expenses" 
-                value={`KES ${((totalExpenses || 0) / 1000).toFixed(0)}K`} 
+                value={formatKES(totalExpenses || 0)} 
                 icon={Wallet} 
                 variant="danger" 
               />

@@ -40,10 +40,20 @@ export default function Tenants() {
     return calculatePaymentStatus(rentAmount, payments);
   };
 
-  const handleCreate = (data: { name: string; phone: string; rent_amount: number; unit_id: string | null }) => {
-    createTenant.mutate(data, {
-      onSuccess: () => setIsAddOpen(false),
-    });
+  // Updated to handle the addAnother parameter
+  const handleCreate = (data: { name: string; phone: string; rent_amount: number; unit_id: string | null }, addAnother?: boolean) => {
+    createTenant.mutate(
+      { tenantData: data, addAnother },
+      {
+        onSuccess: ({ addAnother }) => {
+          // Only close the dialog if NOT adding another tenant
+          if (!addAnother) {
+            setIsAddOpen(false);
+          }
+          // If addAnother is true, the form stays open and resets itself
+        },
+      }
+    );
   };
 
   const handleUpdate = (data: { name: string; phone: string; rent_amount: number; unit_id: string | null }) => {
@@ -183,14 +193,12 @@ export default function Tenants() {
                       )}
                     </div>
                     <div className="space-y-2 mt-3">
-                      {/* Changed <p> to <div> - FIX #1 */}
                       <div className="text-sm text-muted-foreground flex items-center gap-2.5">
                         <div className="p-1.5 rounded-lg bg-muted">
                           <Phone className="h-3.5 w-3.5" />
                         </div>
                         {formatKenyanPhone(tenant.phone)}
                       </div>
-                      {/* Changed <p> to <div> - FIX #2 */}
                       <div className="text-sm font-medium text-foreground flex items-center gap-2.5">
                         <div className="p-1.5 rounded-lg bg-muted">
                           <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
@@ -198,7 +206,6 @@ export default function Tenants() {
                         KES {tenant.rent_amount.toLocaleString()}
                       </div>
                       {tenant.units ? (
-                        /* Changed <p> to <div> - FIX #3 */
                         <div className="text-sm text-muted-foreground flex items-center gap-2.5">
                           <div className="p-1.5 rounded-lg bg-muted">
                             <Home className="h-3.5 w-3.5" />
@@ -206,7 +213,6 @@ export default function Tenants() {
                           Unit {tenant.units.unit_number} • {(tenant.units.properties as { name: string } | null)?.name}
                         </div>
                       ) : (
-                        /* Changed <p> to <div> - FIX #4 */
                         <div className="text-sm text-muted-foreground flex items-center gap-2.5">
                           <div className="p-1.5 rounded-lg bg-muted">
                             <Home className="h-3.5 w-3.5" />

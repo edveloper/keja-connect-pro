@@ -11,6 +11,16 @@ interface StatsCardProps {
 }
 
 export function StatsCard({ label, value, icon: Icon, variant = "default", className }: StatsCardProps) {
+  // Determine responsive font size based on value length
+  const valueStr = String(value);
+  const getResponsiveFontSize = () => {
+    const length = valueStr.length;
+    if (length <= 5) return "text-lg sm:text-xl lg:text-2xl";
+    if (length <= 8) return "text-base sm:text-lg lg:text-xl";
+    if (length <= 11) return "text-sm sm:text-base lg:text-lg";
+    return "text-xs sm:text-sm lg:text-base";
+  };
+
   return (
     <Card className={cn(
       "p-3 sm:p-4 animate-fade-in overflow-hidden relative",
@@ -18,9 +28,6 @@ export function StatsCard({ label, value, icon: Icon, variant = "default", class
       variant === "danger" && "border-destructive/20 bg-gradient-to-br from-destructive/5 to-destructive/10",
       className
     )}>
-      {/* Using 'items-start' for mobile to prevent icon stretching 
-          and 'sm:items-center' for larger screens.
-      */}
       <div className="flex flex-row items-center gap-2 sm:gap-3">
         <div className={cn(
           "p-2 sm:p-2.5 rounded-xl shrink-0",
@@ -28,19 +35,18 @@ export function StatsCard({ label, value, icon: Icon, variant = "default", class
           variant === "success" && "bg-success/15 text-success",
           variant === "danger" && "bg-destructive/15 text-destructive"
         )}>
-          <Icon className="h-4 w-4 sm:h-5 sm:h-5" />
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
         
         <div className="min-w-0 flex-1">
-          {/* Responsive Text: 
-              - text-lg on mobile (approx 18px)
-              - sm:text-xl on tablets (approx 20px)
-              - lg:text-2xl on desktop (approx 24px)
-          */}
-          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground truncate leading-tight">
+          {/* Dynamic responsive text that adapts to value length */}
+          <p className={cn(
+            "font-bold text-foreground leading-tight tabular-nums",
+            getResponsiveFontSize()
+          )}>
             {value}
           </p>
-          <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider truncate">
+          <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider truncate mt-0.5">
             {label}
           </p>
         </div>

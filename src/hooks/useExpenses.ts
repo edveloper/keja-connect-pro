@@ -32,28 +32,7 @@ export function useExpenseCategories() {
   });
 }
 
-export function useCreateCategory() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (name: string) => {
-      const { data, error } = await supabase
-        .from('expense_categories')
-        .insert({ name })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
-      toast({ title: 'Success', description: 'New category added' });
-    },
-  });
-}
-
-// MODIFIED: Supports month filtering and "All-Time" (null)
 export function useExpenses(month?: string | null) {
-  // If undefined is passed, default to current month. If null is passed, it stays null (All-Time).
   const filterMonth = month === undefined ? new Date().toISOString().slice(0, 7) : month;
 
   return useQuery({
@@ -72,22 +51,21 @@ export function useExpenses(month?: string | null) {
         .in('property_id', propertyIds)
         .order('expense_date', { ascending: false });
 
-      // Only apply month filter if filterMonth is NOT null
       if (filterMonth) {
         query = query.eq('expense_month', filterMonth);
       }
       
       const { data, error } = await query;
-      
       if (error) throw error;
       return data as unknown as Expense[];
     },
   });
 }
 
-// MODIFIED: Simplified to pass the month/null value through
-export function useTotalExpenses(month?: string | null) {
-  const { data: expenses, isLoading } = useExpenses(month);
+export function useTotalExpenses(selectedDate: Date | null) {
+  // Pass formatted string to useExpenses
+  const monthString = selectedDate ? selectedDate.toISOString().slice(0, 7) : null;
+  const { data: expenses, isLoading } = useExpenses(monthString);
   const total = expenses?.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0) || 0;
   return { data: total, isLoading };
 }
@@ -112,37 +90,6 @@ export function useCreateExpense() {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast({ title: 'Success', description: 'Expense recorded' });
-    },
-  });
-}
-
-export function useUpdateExpense() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string } & Partial<ExpenseRow>) => {
-      const { data, error } = await supabase.from('expenses').update(updates).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast({ title: 'Updated', description: 'Expense record updated' });
-    },
-  });
-}
-
-export function useDeleteExpense() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('expenses').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast({ title: 'Removed', description: 'Expense deleted' });
     },
   });
 }

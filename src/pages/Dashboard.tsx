@@ -19,9 +19,8 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   
   const { data, isLoading } = useDashboardData(selectedDate);
-  // Pass the month key to expenses to filter expenses by month too
-  const monthKey = selectedDate ? format(selectedDate, "yyyy-MM") : null;
-  const { data: totalExpenses, isLoading: expensesLoading } = useTotalExpenses();
+  // Fixed: Passing selectedDate directly to the total hook
+  const { data: totalExpenses, isLoading: expensesLoading } = useTotalExpenses(selectedDate);
 
   const [occupiedOpen, setOccupiedOpen] = useState(true);
   const [vacantOpen, setVacantOpen] = useState(false);
@@ -44,8 +43,8 @@ export default function Dashboard() {
   const sortedOccupied = useMemo(() => {
     return [...occupiedUnits].sort((a, b) => {
       const statusOrder = { unpaid: 0, partial: 1, paid: 2, overpaid: 3 };
-      const statusA = statusOrder[a.payment_status as keyof typeof statusOrder];
-      const statusB = statusOrder[b.payment_status as keyof typeof statusOrder];
+      const statusA = statusOrder[a.payment_status as keyof typeof statusOrder] ?? 0;
+      const statusB = statusOrder[b.payment_status as keyof typeof statusOrder] ?? 0;
       if (statusA !== statusB) return statusA - statusB;
       return naturalSort(a, b);
     });
@@ -105,7 +104,7 @@ export default function Dashboard() {
             />
             
             <StatsCard 
-              label="Month's Collection" 
+              label="Collection" 
               value={formatKES(data?.stats.totalCollected || 0)} 
               icon={Banknote} 
               variant="success" 

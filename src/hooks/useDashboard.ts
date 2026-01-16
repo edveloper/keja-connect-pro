@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { differenceInMonths, startOfMonth, parseISO, getDaysInMonth, differenceInDays, endOfMonth, addMonths } from 'date-fns';
+import { differenceInMonths, startOfMonth, parseISO, getDaysInMonth, differenceInDays, endOfMonth, isBefore } from 'date-fns';
 
 export type PaymentStatus = 'paid' | 'partial' | 'unpaid' | 'overpaid';
 
@@ -48,6 +48,7 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
       if (tenantsError) throw tenantsError;
       const tenants = tenantsData as unknown as Tenant[];
 
+      // Fetch payments up to the viewed month
       let paymentsQuery = supabase.from('payments').select('tenant_id, amount, payment_month');
       if (selectedDate) paymentsQuery = paymentsQuery.lte('payment_month', dateKey);
 
@@ -56,21 +57,28 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
 
       const dashboardUnits: DashboardUnit[] = (units || []).map(unit => {
         const tenant = tenants?.find(t => t.unit_id === unit.id);
-        
-        if (!tenant) return {
+        const unitBase = {
           id: unit.id, unit_number: unit.unit_number, property_id: unit.property_id,
           property_name: (unit.properties as any)?.name || 'Unknown',
-          tenant_id: null, tenant_name: null, tenant_phone: null,
+        };
+
+        if (!tenant) return {
+          ...unitBase, tenant_id: null, tenant_name: null, tenant_phone: null,
           rent_amount: 0, payment_status: 'unpaid', amount_paid: 0, balance: 0,
         };
 
         const monthlyRent = Number(tenant.rent_amount) || 0;
         const leaseStart = tenant.lease_start ? parseISO(tenant.lease_start) : new Date();
-        const comparisonDate = selectedDate ? startOfMonth(selectedDate) : startOfMonth(new Date());
+        const viewMonthStart = selectedDate ? startOfMonth(selectedDate) : startOfMonth(new Date());
+        const leaseMonthStart = startOfMonth(leaseStart);
 
-        // --- CALCULATION LOGIC ---
+        // Arrears Logic: Don't charge if lease hasn't started
+        if (selectedDate && isBefore(viewMonthStart, leaseMonthStart)) {
+          return { ...unitBase, tenant_id: tenant.id, tenant_name: tenant.name, tenant_phone: tenant.phone, rent_amount: monthlyRent, payment_status: 'paid', amount_paid: 0, balance: 0 };
+        }
+
+        // Calculate Cumulative Expectation
         let firstMonthCharge = monthlyRent;
-
         if (tenant.first_month_override !== null) {
           firstMonthCharge = Number(tenant.first_month_override);
         } else if (tenant.is_prorated) {
@@ -79,19 +87,23 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
           firstMonthCharge = (monthlyRent / daysInMonth) * daysRemaining;
         }
 
-        const nextMonthStart = startOfMonth(addMonths(startOfMonth(leaseStart), 1));
-        const fullMonthsCount = Math.max(0, differenceInMonths(comparisonDate, nextMonthStart) + 1);
-        
-        const cumulativeExpected = firstMonthCharge + (monthlyRent * fullMonthsCount) + (Number(tenant.opening_balance) || 0);
+        const monthsDifference = differenceInMonths(viewMonthStart, leaseMonthStart);
+        const totalExpected = (Number(tenant.opening_balance) || 0) + firstMonthCharge + (monthlyRent * Math.max(0, monthsDifference));
         const totalPaidToDate = allPayments?.filter(p => p.tenant_id === tenant.id).reduce((s, p) => s + p.amount, 0) || 0;
-        const balance = Math.round(cumulativeExpected - totalPaidToDate);
+        
+        const balance = Math.round(totalExpected - totalPaidToDate);
+
+        // Determine Status based on Net Balance
+        let status: PaymentStatus = 'unpaid';
+        if (balance <= 10) status = 'paid';
+        else if (balance < monthlyRent) status = 'partial';
+        if (balance < 0) status = 'overpaid';
 
         return {
-          id: unit.id, unit_number: unit.unit_number, property_id: unit.property_id,
-          property_name: (unit.properties as any)?.name || 'Unknown',
+          ...unitBase,
           tenant_id: tenant.id, tenant_name: tenant.name, tenant_phone: tenant.phone,
           rent_amount: monthlyRent,
-          payment_status: totalPaidToDate >= cumulativeExpected - 5 ? 'paid' : totalPaidToDate > 0 ? 'partial' : 'unpaid',
+          payment_status: status,
           amount_paid: allPayments?.filter(p => p.tenant_id === tenant.id && p.payment_month === dateKey).reduce((s, p) => s + p.amount, 0) || 0,
           balance: balance,
         };
@@ -102,8 +114,6 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
         stats: {
           totalUnits: dashboardUnits.length,
           occupiedUnits: dashboardUnits.filter(u => u.tenant_id).length,
-          paidUnits: dashboardUnits.filter(u => u.payment_status === 'paid').length,
-          arrearsUnits: dashboardUnits.filter(u => u.tenant_id && u.payment_status !== 'paid').length,
           totalCollected: allPayments?.filter(p => p.payment_month === dateKey).reduce((s, p) => s + p.amount, 0) || 0,
           totalArrearsValue: dashboardUnits.reduce((sum, u) => sum + (u.balance > 0 ? u.balance : 0), 0),
           totalDeposits: tenants?.reduce((sum, t) => sum + (Number(t.security_deposit) || 0), 0) || 0,

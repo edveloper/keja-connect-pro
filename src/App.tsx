@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { MigrationRunner } from '@/components/migration/MigrationRunner';
+
 
 // Layout & Components
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -69,6 +71,7 @@ const App = () => {
                 <Route path="/help" element={<Help />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/migrate" element={<MigrationRunner />} />
                 
                 {/* Redirect any other page to home if logged in */}
                 <Route path="/auth" element={<Navigate to="/" replace />} />

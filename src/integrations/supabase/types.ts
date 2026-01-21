@@ -10,28 +10,69 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
+      charges: {
+        Row: {
+          amount: number
+          charge_month: string
+          created_at: string
+          id: string
+          note: string | null
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          charge_month: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          tenant_id: string
+          type?: string
+        }
+        Update: {
+          amount?: number
+          charge_month?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charges_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_categories: {
         Row: {
           created_at: string
           id: string
           is_preset: boolean
           name: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           is_preset?: boolean
           name: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           is_preset?: boolean
           name?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -46,6 +87,7 @@ export type Database = {
           id: string
           property_id: string
           unit_id: string | null
+          user_id: string | null
         }
         Insert: {
           amount: number
@@ -57,6 +99,7 @@ export type Database = {
           id?: string
           property_id: string
           unit_id?: string | null
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -68,6 +111,7 @@ export type Database = {
           id?: string
           property_id?: string
           unit_id?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -93,33 +137,71 @@ export type Database = {
           },
         ]
       }
+      payment_allocations: {
+        Row: {
+          amount: number
+          applied_month: string
+          created_at: string
+          id: string
+          payment_id: string
+        }
+        Insert: {
+          amount: number
+          applied_month: string
+          created_at?: string
+          id?: string
+          payment_id: string
+        }
+        Update: {
+          amount?: number
+          applied_month?: string
+          created_at?: string
+          id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_payment"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
           created_at: string
           id: string
           mpesa_code: string | null
+          note: string | null
           payment_date: string
           payment_month: string
           tenant_id: string
+          user_id: string | null
         }
         Insert: {
           amount: number
           created_at?: string
           id?: string
           mpesa_code?: string | null
+          note?: string | null
           payment_date?: string
           payment_month: string
           tenant_id: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
           created_at?: string
           id?: string
           mpesa_code?: string | null
+          note?: string | null
           payment_date?: string
           payment_month?: string
           tenant_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -164,30 +246,48 @@ export type Database = {
       tenants: {
         Row: {
           created_at: string
+          first_month_override: number | null
           id: string
+          is_prorated: boolean | null
+          lease_start: string | null
           name: string
+          opening_balance: number | null
           phone: string
           rent_amount: number
+          security_deposit: number | null
           unit_id: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
+          first_month_override?: number | null
           id?: string
+          is_prorated?: boolean | null
+          lease_start?: string | null
           name: string
+          opening_balance?: number | null
           phone: string
           rent_amount?: number
+          security_deposit?: number | null
           unit_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
+          first_month_override?: number | null
           id?: string
+          is_prorated?: boolean | null
+          lease_start?: string | null
           name?: string
+          opening_balance?: number | null
           phone?: string
           rent_amount?: number
+          security_deposit?: number | null
           unit_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -205,18 +305,21 @@ export type Database = {
           id: string
           property_id: string
           unit_number: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           property_id: string
           unit_number: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           property_id?: string
           unit_number?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -233,7 +336,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      insert_payment_with_allocations: {
+        Args: {
+          p_allocations?: Json
+          p_amount: number
+          p_mpesa_code?: string
+          p_note?: string
+          p_payment_month: string
+          p_tenant_id: string
+          p_user_id: string
+        }
+        Returns: {
+          created_at: string
+          payment_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

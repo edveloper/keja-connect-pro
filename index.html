@@ -3,23 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>Keja-Connect | Property Management for Kenyan Landlords</title>
-    <meta name="description" content="Mobile-first property management app for Kenyan landlords. Manage properties, units, tenants and reconcile M-Pesa payments automatically." />
+
+    <meta
+      name="description"
+      content="Mobile-first property management app for Kenyan landlords. Manage properties, units, tenants and reconcile M-Pesa payments automatically."
+    />
     <meta name="author" content="Keja-Connect" />
     <meta name="theme-color" content="#16a34a" />
 
-    <meta property="og:title" content="Keja-Connect | Property Management" />
-    <meta property="og:description" content="Mobile-first property management for Kenyan landlords with M-Pesa payment reconciliation" />
+    <!-- Canonical -->
+    <link rel="canonical" href="https://keja-connect.vercel.app/" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Keja-Connect | Property Management for Kenyan Landlords" />
+    <meta
+      property="og:description"
+      content="Mobile-first property management for Kenyan landlords with M-Pesa payment reconciliation."
+    />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://keja-connect.vercel.app/" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@KejaConnect" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
   </head>
 
   <body>
-    <div id="root"></div>
+    <!-- Static fallback content for SEO & accessibility -->
+    <div id="root">
+      <main>
+        <h1>Property Management for Kenyan Landlords</h1>
+
+        <p>
+          Keja-Connect is a mobile-first property management app designed for
+          Kenyan landlords and property managers. Easily manage properties,
+          units, tenants, expenses, and automatically reconcile M-Pesa payments
+          in one secure platform.
+        </p>
+
+        <nav>
+          <a href="/contact">Contact</a> |
+          <a href="/privacy">Privacy Policy</a>
+        </nav>
+      </main>
+    </div>
+
+    <!-- React app -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

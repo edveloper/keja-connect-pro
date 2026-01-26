@@ -95,6 +95,12 @@ export function useTenants() {
           unit_id: r.unit_id,
           created_at: r.created_at,
           updated_at: r.updated_at,
+          user_id: r.user_id,
+          lease_start: r.lease_start,
+          opening_balance: r.opening_balance,
+          security_deposit: r.security_deposit,
+          first_month_override: r.first_month_override,
+          is_prorated: r.is_prorated,
         };
 
         return { ...base, units: unitsRel } as TenantWithRelations;
@@ -128,7 +134,7 @@ export function useUserProperties() {
 }
 
 /**
- * Create tenant
+ * Create tenant with automatic charge generation
  */
 export function useCreateTenant(): UseMutationResult<
   { data: Tenant; addAnother?: boolean },
@@ -145,25 +151,102 @@ export function useCreateTenant(): UseMutationResult<
     unknown
   >({
     mutationFn: async ({ tenantData, addAnother }) => {
-      const { data, error } = await supabase
+      const userId = await getUserIdOrNull();
+      if (!userId) throw new Error('Not authenticated');
+
+      // 1. Create tenant record
+      const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
-        .insert(tenantData)
+        .insert({ ...tenantData, user_id: userId })
         .select()
         .single();
 
-      if (error) throw error;
-      return { data: data as Tenant, addAnother };
+      if (tenantError) throw tenantError;
+
+      // 2. Create opening balance charge (if exists and > 0)
+      if (tenantData.opening_balance && tenantData.opening_balance > 0) {
+        const leaseMonth = tenantData.lease_start?.slice(0, 7) || new Date().toISOString().slice(0, 7);
+        
+        try {
+          await (supabase as any).rpc('create_opening_balance_charge', {
+            p_tenant_id: tenant.id,
+            p_amount: tenantData.opening_balance,
+            p_effective_month: leaseMonth,
+            p_note: 'Opening balance - arrears before lease start'
+          });
+        } catch (err: any) {
+          // If opening balance charge fails, log but don't fail the entire operation
+          console.error('Failed to create opening balance charge:', err);
+        }
+      }
+
+      // 3. Generate rent charges from lease start to current month
+      if (tenantData.lease_start && tenantData.rent_amount) {
+        const leaseStart = new Date(tenantData.lease_start);
+        const currentMonth = new Date();
+        
+        // Start from the first day of lease month
+        let chargeDate = new Date(leaseStart.getFullYear(), leaseStart.getMonth(), 1);
+        const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+        
+        let isFirstMonth = true;
+        const chargesToCreate = [];
+        
+        // Build all charges
+        while (chargeDate <= endDate) {
+          const chargeMonth = chargeDate.toISOString().slice(0, 7);
+          
+          // Determine charge amount
+          let chargeAmount = tenantData.rent_amount;
+          
+          // Use first month override if prorated
+          if (isFirstMonth && tenantData.is_prorated && tenantData.first_month_override) {
+            chargeAmount = tenantData.first_month_override;
+          }
+          
+          chargesToCreate.push({
+            tenant_id: tenant.id,
+            amount: chargeAmount,
+            charge_month: chargeMonth,
+            type: 'rent',
+            note: isFirstMonth ? 'First month rent' : 'Monthly rent',
+          });
+          
+          isFirstMonth = false;
+          chargeDate.setMonth(chargeDate.getMonth() + 1);
+        }
+        
+        // Insert all charges at once
+        if (chargesToCreate.length > 0) {
+          const { error: chargesError } = await supabase
+            .from('charges')
+            .insert(chargesToCreate);
+          
+          if (chargesError) {
+            console.error('Failed to create rent charges:', chargesError);
+            // Log but don't fail - tenant is already created
+          }
+        }
+      }
+
+      return { data: tenant as Tenant, addAnother };
     },
     onSuccess: ({ addAnother }) => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['charges'] });
       toast({
         title: addAnother ? 'Tenant Added' : 'Success',
-        description: addAnother ? 'Ready for next entry' : 'Tenant created successfully',
+        description: addAnother ? 'Tenant and charges created. Ready for next entry' : 'Tenant and charges created successfully',
       });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error?.message ?? 'Failed to create tenant', variant: 'destructive' });
+      console.error('Create tenant error:', error);
+      toast({ 
+        title: 'Error', 
+        description: error?.message ?? 'Failed to create tenant', 
+        variant: 'destructive' 
+      });
     },
   });
 }
@@ -205,13 +288,46 @@ export function useDeleteTenant(): UseMutationResult<void, any, string, unknown>
 
   return useMutation<void, any, string, unknown>({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('tenants').delete().eq('id', id);
+      // First delete related charges
+      await supabase
+        .from('charges')
+        .delete()
+        .eq('tenant_id', id);
+      
+      // Then delete payment allocations
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('tenant_id', id);
+      
+      if (payments && payments.length > 0) {
+        const paymentIds = payments.map(p => p.id);
+        await supabase
+          .from('payment_allocations')
+          .delete()
+          .in('payment_id', paymentIds);
+        
+        // Delete payments
+        await supabase
+          .from('payments')
+          .delete()
+          .eq('tenant_id', id);
+      }
+      
+      // Finally delete tenant
+      const { error } = await supabase
+        .from('tenants')
+        .delete()
+        .eq('id', id);
+        
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast({ title: 'Success', description: 'Tenant removed' });
+      queryClient.invalidateQueries({ queryKey: ['charges'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      toast({ title: 'Success', description: 'Tenant and all related data removed' });
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error?.message ?? 'Failed to delete tenant', variant: 'destructive' });

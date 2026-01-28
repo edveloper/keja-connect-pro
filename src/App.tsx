@@ -16,6 +16,8 @@ import Help from "./pages/Help";
 import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import About from "./pages/About";
+
 
 // Pages (Private)
 import Dashboard from "./pages/Dashboard";
@@ -56,6 +58,7 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             {/* 🌍 PUBLIC ROUTES (SEO / TRUST) */}
+            <Route path="/about" element={<About />} />
             <Route path="/help" element={<Help />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/contact" element={<Contact />} />

@@ -79,13 +79,15 @@ export default function Properties() {
 
   return (
     <PageContainer title="Properties" subtitle="Manage your properties and units">
-      <Button
-        className="w-full mb-6 h-12 text-base font-semibold"
-        onClick={() => setIsAddPropertyOpen(true)}
-      >
-        <Plus className="h-5 w-5 mr-2" />
-        Add Property
-      </Button>
+      <div className="surface-panel mb-6 p-3 sm:p-4">
+        <Button
+          className="w-full h-12 text-base font-semibold"
+          onClick={() => setIsAddPropertyOpen(true)}
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Add Property
+        </Button>
+      </div>
 
       {isLoading ? (
         <div className="space-y-4">
@@ -94,11 +96,11 @@ export default function Properties() {
           ))}
         </div>
       ) : properties?.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="surface-panel text-center py-12 px-4">
           <div className="p-4 rounded-full bg-muted inline-block mb-4">
             <Building2 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium">No properties yet</h3>
+          <h3 className="text-lg font-medium">No properties added yet</h3>
           <p className="text-muted-foreground mt-1">Add your first property to get started</p>
         </div>
       ) : (

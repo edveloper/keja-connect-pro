@@ -7,6 +7,7 @@ import { MigrationBanner } from "@/components/migration/MigrationBanner";
 import { useDashboardData } from "@/hooks/useDashboard";
 import { useTotalExpenses } from "@/hooks/useExpenses";
 import { useAutoMigration } from "@/hooks/useAutoMigration";
+import type { DashboardUnit } from "@/hooks/useDashboard";
 import { formatKES } from "@/lib/number-formatter";
 import {
   Building2, AlertTriangle, Banknote,
@@ -31,12 +32,12 @@ export default function Dashboard() {
   const [occupiedOpen, setOccupiedOpen] = useState(true);
   const [vacantOpen, setVacantOpen] = useState(false);
 
-  const [selectedUnit, setSelectedUnit] = useState<any | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<DashboardUnit | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const dateLabel = selectedDate ? format(selectedDate, "MMMM yyyy") : "All-Time Records";
+  const dateLabel = selectedDate ? format(selectedDate, "MMMM yyyy") : "All-Time Overview";
 
-  const naturalSort = (a: any, b: any) =>
+  const naturalSort = (a: DashboardUnit, b: DashboardUnit) =>
     a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true, sensitivity: 'base' });
 
   const allUnits = data?.units || [];
@@ -59,7 +60,7 @@ export default function Dashboard() {
     });
   }, [occupiedUnits]);
 
-  function openRecordPayment(unit: any) {
+  function openRecordPayment(unit: DashboardUnit) {
     setSelectedUnit(unit);
     setDialogOpen(true);
   }
@@ -70,10 +71,10 @@ export default function Dashboard() {
   return (
     <PageContainer title="Dashboard" subtitle="Property Overview">
       {/* Migration banner - shows during migration or if error */}
-      <MigrationBanner />
+      <MigrationBanner migration={migration} />
 
       {/* --- DATE SELECTOR --- */}
-      <div className="flex items-center justify-between mb-6 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
+      <div className="surface-panel flex items-center justify-between mb-6 p-2">
         <Button
           variant="ghost"
           size="icon"
@@ -86,7 +87,7 @@ export default function Dashboard() {
         <div className="flex flex-col items-center text-center">
           <div className="flex items-center gap-2">
             <Calendar className="h-3.5 w-3.5 text-primary" />
-            <h2 className="font-bold text-sm sm:text-base text-slate-800">{dateLabel}</h2>
+            <h2 className="font-bold text-sm sm:text-base text-foreground">{dateLabel}</h2>
           </div>
           <button
             onClick={() => setSelectedDate(selectedDate ? null : new Date())}
@@ -126,21 +127,21 @@ export default function Dashboard() {
             />
 
             <StatsCard
-              label="Collection"
+              label="Collections"
               value={formatKES(data?.stats.totalAllocated || 0)}
               icon={Banknote}
               variant="success"
             />
 
             <StatsCard
-              label="Total Arrears"
+              label="Outstanding"
               value={formatKES(data?.stats.totalBalance || 0)}
               icon={AlertTriangle}
               variant={(data?.stats.totalBalance || 0) > 0 ? "danger" : "success"}
             />
 
             <StatsCard
-              label="Monthly Expenses"
+              label={selectedDate ? "Period Expenses" : "All-Time Expenses"}
               value={formatKES(totalExpenses || 0)}
               icon={Wallet}
               variant="danger"
@@ -167,7 +168,7 @@ export default function Dashboard() {
         ) : allUnits.length === 0 ? (
           <div className="text-center py-12 px-6 bg-card rounded-2xl border border-dashed border-border">
             <Building2 className="h-8 w-8 text-slate-300 mx-auto mb-4" />
-            <h3 className="font-semibold text-foreground mb-2">No units yet</h3>
+            <h3 className="font-semibold text-foreground mb-2">No units added yet</h3>
           </div>
         ) : (
           <>

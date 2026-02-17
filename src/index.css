@@ -152,6 +152,12 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-image:
+      radial-gradient(circle at 5% 0%, hsl(var(--primary) / 0.12), transparent 34%),
+      radial-gradient(circle at 95% 5%, hsl(210 90% 60% / 0.1), transparent 36%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(210 24% 97%));
+    background-attachment: fixed;
+    min-height: 100vh;
   }
 }
 
@@ -161,7 +167,7 @@
   }
 
   .glass {
-    @apply backdrop-blur-xl bg-card/80;
+    @apply backdrop-blur-xl bg-card/75;
   }
 
   .shadow-card {
@@ -182,5 +188,24 @@
 
   .text-balance {
     text-wrap: balance;
+  }
+
+  .app-shell {
+    @apply relative overflow-hidden;
+  }
+
+  .surface-panel {
+    @apply rounded-2xl border border-border/70 bg-card/80 backdrop-blur-md shadow-card;
+  }
+
+  .soft-grid {
+    background-image:
+      linear-gradient(to right, hsl(210 18% 90% / 0.24) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(210 18% 90% / 0.24) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+
+  .elevate {
+    @apply transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg;
   }
 }

@@ -9,10 +9,21 @@ import { useUnits } from "@/hooks/useUnits";
 import { ExpenseForm } from "@/components/expenses/ExpenseForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format, addMonths, subMonths } from "date-fns";
 
 export default function Expenses() {
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
   
   // 1. New Date State (matches Dashboard logic)
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -43,7 +54,7 @@ export default function Expenses() {
       subtitle={dateLabel}
     >
       {/* --- DATE SELECTOR (Same as Dashboard) --- */}
-      <div className="flex items-center justify-between mb-6 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
+      <div className="surface-panel flex items-center justify-between mb-6 p-2">
         <Button 
           variant="ghost" 
           size="icon" 
@@ -55,13 +66,13 @@ export default function Expenses() {
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-2">
             <Calendar className="h-3.5 w-3.5 text-primary" />
-            <h2 className="font-bold text-sm sm:text-base text-slate-800">{dateLabel}</h2>
+            <h2 className="font-bold text-sm sm:text-base text-foreground">{dateLabel}</h2>
           </div>
           <button 
             onClick={() => setSelectedDate(selectedDate ? null : new Date())}
             className="text-[10px] text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline"
           >
-            {selectedDate ? "Switch to All-Time" : "Back to Monthly"}
+            {selectedDate ? "Switch to All-Time" : "Back to Monthly View"}
           </button>
         </div>
 
@@ -86,7 +97,7 @@ export default function Expenses() {
             </div>
             <Button onClick={() => setIsAddOpen(true)} size="sm" className="rounded-full px-4 shadow-sm">
               <Plus className="h-4 w-4 mr-1" />
-              Add
+              Add Expense
             </Button>
           </div>
         </CardContent>
@@ -96,7 +107,7 @@ export default function Expenses() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
             <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-            Detailed Breakdown
+            Expense Breakdown
             </h2>
             <Badge variant="outline" className="text-[10px] font-bold">
                 {expenses?.length || 0} items
@@ -111,7 +122,7 @@ export default function Expenses() {
           </div>
         ) : !expenses || expenses.length === 0 ? (
           <div className="text-center py-12 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-            <p className="text-sm text-slate-400">No expenses recorded for this period.</p>
+            <p className="text-sm text-slate-400">No expenses recorded for this time period.</p>
           </div>
         ) : (
           expenses.map((expense) => (
@@ -146,7 +157,7 @@ export default function Expenses() {
                     <div className="flex items-center gap-2">
                          <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
                          <p className="text-[10px] font-medium text-slate-400">
-                        {expense.properties?.name} • {formatDate(expense.expense_date)}
+                        {expense.properties?.name} | {formatDate(expense.expense_date)}
                         </p>
                     </div>
                   </div>
@@ -154,11 +165,7 @@ export default function Expenses() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-slate-300 hover:text-destructive hover:bg-destructive/5"
-                    onClick={() => {
-                        if(confirm("Delete this expense record?")) {
-                            deleteExpense.mutate(expense.id)
-                        }
-                    }}
+                    onClick={() => setExpenseToDelete(expense.id)}
                     disabled={deleteExpense.isPending}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -183,6 +190,36 @@ export default function Expenses() {
         }}
         isLoading={createExpense.isPending}
       />
+
+      <AlertDialog
+        open={!!expenseToDelete}
+        onOpenChange={(open) => {
+          if (!open) setExpenseToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this expense record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!expenseToDelete) return;
+                deleteExpense.mutate(expenseToDelete, {
+                  onSettled: () => setExpenseToDelete(null),
+                });
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   );
 }
+

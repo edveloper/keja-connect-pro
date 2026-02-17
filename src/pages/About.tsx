@@ -1,12 +1,11 @@
 import { Helmet } from "react-helmet-async";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { Card, CardContent } from "@/components/ui/card";
-import { Building2, ShieldCheck, Users, MapPin } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Building2, ShieldCheck, Users, MapPin, BarChart3, Wallet } from "lucide-react";
 
 export default function About() {
   return (
     <>
-      {/* SEO METADATA */}
       <Helmet>
         <title>About Keja-Connect | Built for Kenyan Landlords</title>
         <meta
@@ -17,92 +16,90 @@ export default function About() {
 
       <PageContainer
         title="About Keja-Connect"
-        subtitle="Property management, simplified for Kenyan landlords"
+        subtitle="Built for practical property management"
       >
-        <div className="space-y-6 text-sm leading-relaxed text-muted-foreground">
-
-          {/* INTRO */}
-          <section>
-            <p>
-              Keja-Connect is a mobile-first property management application
-              designed specifically for Kenyan landlords. The platform helps
-              property owners track rental income, manage tenants, monitor
-              expenses, and maintain accurate financial records — all in one
-              secure place.
-            </p>
-          </section>
-
-          {/* MISSION */}
-          <Card>
-            <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center gap-2 text-foreground font-semibold">
-                <Building2 className="h-5 w-5 text-primary" />
-                <h2>Our Mission</h2>
-              </div>
-              <p>
-                Our mission is to simplify property management for landlords in
-                Kenya by providing reliable tools that reduce paperwork, prevent
-                rent disputes, and improve financial visibility across rental
-                properties.
+        <div className="space-y-5">
+          <Card className="surface-panel">
+            <CardContent className="pt-6">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Keja-Connect is a landlord-focused platform designed for the Kenyan rental market.
+                It brings property setup, tenant records, rent collection, and expense tracking into
+                one workflow so owners can run operations with less admin overhead and clearer numbers.
               </p>
             </CardContent>
           </Card>
 
-          {/* EXPERTISE */}
-          <Card>
-            <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center gap-2 text-foreground font-semibold">
-                <ShieldCheck className="h-5 w-5 text-primary" />
-                <h2>Experience & Expertise</h2>
-              </div>
-              <p>
-                Keja-Connect was built by a Kenyan software developer with
-                firsthand experience managing rental properties and handling
-                tenant payment records. The app reflects real-world landlord
-                workflows including partial payments, overpayments, arrears,
-                and expense reconciliation.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  What We Solve
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Spreadsheets, fragmented payment logs, and inconsistent reporting are replaced with a
+                single source of truth for rental operations.
+              </CardContent>
+            </Card>
 
-          {/* WHO IT'S FOR */}
-          <Card>
-            <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center gap-2 text-foreground font-semibold">
-                <Users className="h-5 w-5 text-primary" />
-                <h2>Who Keja-Connect Is For</h2>
-              </div>
-              <p>
-                Keja-Connect is ideal for individual landlords, small property
-                owners, and real estate managers who want a simple but powerful
-                way to manage properties without relying on spreadsheets or
-                manual record-keeping.
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Users className="h-4 w-4 text-primary" />
+                  Who It Is For
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Individual landlords, small portfolios, and property managers who need accurate records
+                without a complex enterprise setup.
+              </CardContent>
+            </Card>
 
-          {/* LOCAL CONTEXT */}
-          <Card>
-            <CardContent className="pt-6 space-y-3">
-              <div className="flex items-center gap-2 text-foreground font-semibold">
-                <MapPin className="h-5 w-5 text-primary" />
-                <h2>Built for Kenya</h2>
-              </div>
-              <p>
-                The platform is designed with the Kenyan rental market in mind,
-                supporting common landlord practices and aligning with local
-                property management realities such as mobile payments and
-                flexible rent arrangements.
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Wallet className="h-4 w-4 text-primary" />
+                  Financial Clarity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Monitor collections, arrears, overpayments, and expenses in real time, then export
+                summaries for easier month-end review.
+              </CardContent>
+            </Card>
 
-          {/* FOOTER NOTE */}
-          <div className="text-center pt-4 border-t border-border/50">
-            <p className="text-[10px] uppercase tracking-widest font-medium">
-              Keja-Connect — Property Management Simplified
-            </p>
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  Local Context
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                The product reflects common Kenya-based rental workflows, including mobile-money aligned
+                collection practices and flexible monthly payment behavior.
+              </CardContent>
+            </Card>
           </div>
+
+          <Card className="surface-panel">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                Product Principles
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-2">
+              <p>Reliable records over guesswork.</p>
+              <p>Simple workflows over unnecessary complexity.</p>
+              <p>Actionable reporting over raw data dumps.</p>
+              <p className="pt-1 flex items-center gap-2 text-foreground font-medium">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                Keja-Connect helps you stay operationally clear, month after month.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </PageContainer>
     </>

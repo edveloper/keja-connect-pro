@@ -5,6 +5,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 /* ============================================================================
    EXPORTED TYPES (used by UnitCard, Dashboard, Tenants, etc.)
@@ -57,7 +58,12 @@ export interface DashboardResult {
    HELPERS
 ============================================================================ */
 
-function toNumber(v: any): number {
+type ChargeRow = Database["public"]["Tables"]["charges"]["Row"];
+type AllocationRow = Database["public"]["Tables"]["payment_allocations"]["Row"] & {
+  payments?: { tenant_id: string } | null;
+};
+
+function toNumber(v: unknown): number {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
   const n = parseFloat(String(v ?? "0"));
   return Number.isFinite(n) ? n : 0;
@@ -172,7 +178,7 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
         .in("tenant_id", tenantIds);
 
       if (viewMonth) {
-        chargesQuery = chargesQuery.lte("charge_month", viewMonth);
+        chargesQuery = chargesQuery.eq("charge_month", viewMonth);
       }
 
       const { data: charges = [] } = await chargesQuery;
@@ -186,7 +192,7 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
         .in("payments.tenant_id", tenantIds);
 
       if (viewMonth) {
-        allocationsQuery = allocationsQuery.lte("applied_month", viewMonth);
+        allocationsQuery = allocationsQuery.eq("applied_month", viewMonth);
       }
 
       const { data: allocations = [] } = await allocationsQuery;
@@ -194,15 +200,15 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
       /* ------------------------------------------------------------------
          6. Group balances per tenant
       ------------------------------------------------------------------ */
-      const chargesByTenant: Record<string, any[]> = {};
-      const allocationsByTenant: Record<string, any[]> = {};
+      const chargesByTenant: Record<string, ChargeRow[]> = {};
+      const allocationsByTenant: Record<string, AllocationRow[]> = {};
 
-      charges.forEach(c => {
+      (charges as ChargeRow[]).forEach(c => {
         if (!chargesByTenant[c.tenant_id]) chargesByTenant[c.tenant_id] = [];
         chargesByTenant[c.tenant_id].push(c);
       });
 
-      allocations.forEach(a => {
+      (allocations as AllocationRow[]).forEach(a => {
         const tid = a.payments?.tenant_id;
         if (!tid) return;
         if (!allocationsByTenant[tid]) allocationsByTenant[tid] = [];

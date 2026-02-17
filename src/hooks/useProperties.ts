@@ -14,6 +14,12 @@ export const NUMBERING_STYLES: { value: NumberingStyle; label: string; example: 
 
 type Property = Database['public']['Tables']['properties']['Row'];
 type PropertyInsert = Database['public']['Tables']['properties']['Insert'];
+type CreatePropertyInput = { name: string; address?: string; numbering_style?: NumberingStyle };
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return 'Unexpected error';
+}
 
 /** Return the current user id or null (do not throw here; caller can decide) */
 async function getUserIdOrNull(): Promise<string | null> {
@@ -55,10 +61,10 @@ export function useProperties() {
 /**
  * Create a property and attach it to the current user
  */
-export function useCreateProperty(): UseMutationResult<Property, any, { name: string; address?: string; numbering_style?: NumberingStyle }, unknown> {
+export function useCreateProperty(): UseMutationResult<Property, Error, CreatePropertyInput, unknown> {
   const queryClient = useQueryClient();
 
-  return useMutation<Property, any, { name: string; address?: string; numbering_style?: NumberingStyle }, unknown>({
+  return useMutation<Property, Error, CreatePropertyInput, unknown>({
     mutationFn: async (property) => {
       const userId = await getUserIdOrThrow();
 
@@ -67,7 +73,7 @@ export function useCreateProperty(): UseMutationResult<Property, any, { name: st
         address: property.address ?? null,
         numbering_style: property.numbering_style ?? 'numbers',
         user_id: userId,
-      } as any;
+      };
 
       const { data, error } = await supabase
         .from('properties')
@@ -82,8 +88,8 @@ export function useCreateProperty(): UseMutationResult<Property, any, { name: st
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       toast({ title: 'Success', description: 'Property created' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Error', description: error?.message ?? 'Failed to create property', variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 }
@@ -91,10 +97,10 @@ export function useCreateProperty(): UseMutationResult<Property, any, { name: st
 /**
  * Delete a property by id
  */
-export function useDeleteProperty(): UseMutationResult<void, any, string, unknown> {
+export function useDeleteProperty(): UseMutationResult<void, Error, string, unknown> {
   const queryClient = useQueryClient();
 
-  return useMutation<void, any, string, unknown>({
+  return useMutation<void, Error, string, unknown>({
     mutationFn: async (propertyId: string) => {
       const { error } = await supabase.from('properties').delete().eq('id', propertyId);
       if (error) throw error;
@@ -104,8 +110,8 @@ export function useDeleteProperty(): UseMutationResult<void, any, string, unknow
       queryClient.invalidateQueries({ queryKey: ['units'] });
       toast({ title: 'Success', description: 'Property removed' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Error', description: error?.message ?? 'Failed to remove property', variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 }

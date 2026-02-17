@@ -64,9 +64,9 @@ export default function Reports() {
   /** ----------------------------
    *  Financial Math (FINAL LOGIC)
    *  ---------------------------- */
-  const totalCollected =
-    dashboardData?.stats?.totalCharges ?? 0;
-
+  const billedAmount = dashboardData?.stats?.totalCharges ?? 0;
+  const allocatedAmount = dashboardData?.stats?.totalAllocated ?? 0;
+  const totalCollected = allocatedAmount;
 
   const totalExpensesAmount = totalExpenses ?? 0;
   const netIncome = totalCollected - totalExpensesAmount;
@@ -81,8 +81,9 @@ export default function Reports() {
     );
   }, [dashboardData]);
 
+  const collectionRateBase = monthKey ? expectedRent : billedAmount;
   const collectionRate =
-    expectedRent > 0 ? (totalCollected / expectedRent) * 100 : 0;
+    collectionRateBase > 0 ? (totalCollected / collectionRateBase) * 100 : 0;
 
   const expensesByCategory = useMemo(() => {
     return (
@@ -117,7 +118,8 @@ export default function Reports() {
   return (
     <PageContainer title="Financial Reports" subtitle={dateLabel}>
       {/* EXPORT ACTIONS */}
-      <div className="flex justify-end gap-2 mb-4">
+      <div className="surface-panel mb-4 p-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
         <Button size="sm" variant="outline" onClick={handleExportSummary}>
           <Download className="h-4 w-4 mr-2" />
           Export Summary
@@ -127,10 +129,11 @@ export default function Reports() {
           <Download className="h-4 w-4 mr-2" />
           Export Statement
         </Button>
+        </div>
       </div>
 
       {/* DATE SELECTOR */}
-      <div className="flex items-center justify-between mb-6 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
+      <div className="surface-panel flex items-center justify-between mb-6 p-2">
         <Button
           variant="ghost"
           size="icon"
@@ -144,7 +147,7 @@ export default function Reports() {
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-2">
             <Calendar className="h-3.5 w-3.5 text-primary" />
-            <h2 className="font-bold text-sm sm:text-base text-slate-800">
+            <h2 className="font-bold text-sm sm:text-base text-foreground">
               {dateLabel}
             </h2>
           </div>
@@ -152,7 +155,7 @@ export default function Reports() {
             onClick={() => setSelectedDate(selectedDate ? null : new Date())}
             className="text-[10px] text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline"
           >
-            {selectedDate ? "Switch to All-Time" : "Back to Monthly"}
+            {selectedDate ? "Switch to All-Time" : "Back to Monthly View"}
           </button>
         </div>
 
@@ -196,7 +199,7 @@ export default function Reports() {
           <div className="grid grid-cols-2 gap-4">
             <Card className="p-4">
               <p className="text-xs uppercase font-bold text-slate-400">
-                Revenue
+                Collections
               </p>
               <p className="text-xl font-black">
                 KES {totalCollected.toLocaleString()}

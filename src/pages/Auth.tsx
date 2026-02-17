@@ -6,6 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "An error occurred";
+}
+
 export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -27,8 +32,8 @@ export default function AuthPage() {
         if (error) throw error;
         toast.success("Welcome back to Keja Connect!");
       }
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }

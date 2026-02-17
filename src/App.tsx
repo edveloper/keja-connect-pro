@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 import { MigrationRunner } from "@/components/migration/MigrationRunner";
 
 // Layout
@@ -29,8 +30,24 @@ import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
+function AppBootScreen() {
+  return (
+    <div className="min-h-screen app-shell flex items-center justify-center px-6">
+      <div className="surface-panel w-full max-w-sm p-8 text-center">
+        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground font-semibold">
+          Keja-Connect
+        </p>
+        <h1 className="mt-2 text-xl font-bold text-foreground">Loading your workspace</h1>
+        <div className="mt-5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full w-1/3 animate-pulse rounded-full bg-primary" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const App = () => {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +64,7 @@ const App = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) return null;
+  if (loading) return <AppBootScreen />;
 
   return (
     <QueryClientProvider client={queryClient}>

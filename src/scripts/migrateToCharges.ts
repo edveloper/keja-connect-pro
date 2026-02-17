@@ -11,6 +11,11 @@ interface MigrationResult {
   errors: string[];
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return 'Unexpected error';
+}
+
 export async function migrateToChargesSystem(): Promise<MigrationResult[]> {
   const results: MigrationResult[] = [];
 
@@ -71,7 +76,7 @@ export async function migrateToChargesSystem(): Promise<MigrationResult[]> {
             ? format(parseISO(tenant.lease_start), 'yyyy-MM')
             : format(new Date(), 'yyyy-MM');
 
-          const { data: obCharge, error: obError } = await (supabase as any).rpc(
+          const { data: obCharge, error: obError } = await supabase.rpc(
             'create_opening_balance_charge',
             {
               p_tenant_id: tenant.id,
@@ -87,7 +92,7 @@ export async function migrateToChargesSystem(): Promise<MigrationResult[]> {
               result.errors.push(`Opening balance: ${obError.message}`);
             }
           } else {
-            result.openingBalanceCharge = obCharge as string;
+            result.openingBalanceCharge = obCharge ?? undefined;
           }
         }
 
@@ -157,7 +162,7 @@ export async function migrateToChargesSystem(): Promise<MigrationResult[]> {
 
             if (!existingAllocations || existingAllocations.length === 0) {
               // Use the smart allocation function to allocate this payment
-              const { error: allocError } = await (supabase as any).rpc(
+              const { error: allocError } = await supabase.rpc(
                 'record_payment_with_smart_allocation',
                 {
                   p_tenant_id: payment.tenant_id,
@@ -179,8 +184,8 @@ export async function migrateToChargesSystem(): Promise<MigrationResult[]> {
           }
         }
 
-      } catch (err: any) {
-        result.errors.push(`General error: ${err.message}`);
+      } catch (err: unknown) {
+        result.errors.push(`General error: ${getErrorMessage(err)}`);
       }
 
       results.push(result);
@@ -188,7 +193,7 @@ export async function migrateToChargesSystem(): Promise<MigrationResult[]> {
 
     return results;
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Migration failed:', err);
     throw err;
   }

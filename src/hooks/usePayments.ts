@@ -1,11 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
-
-/* ============================================================
-   Types
-============================================================ */
 
 export type Payment = Database["public"]["Tables"]["payments"]["Row"];
 
@@ -17,9 +13,10 @@ export type CreatePaymentPayload = {
   note?: string | null;
 };
 
-/* ============================================================
-   Helpers
-============================================================ */
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "Unexpected error";
+}
 
 async function getUserId(): Promise<string> {
   const { data } = await supabase.auth.getSession();
@@ -27,10 +24,6 @@ async function getUserId(): Promise<string> {
   if (!userId) throw new Error("Not authenticated");
   return userId;
 }
-
-/* ============================================================
-   Queries
-============================================================ */
 
 export function usePayments() {
   return useQuery({
@@ -70,10 +63,6 @@ export function useCurrentMonthPayments() {
   });
 }
 
-/* ============================================================
-   Mutations
-============================================================ */
-
 export function useCreatePayment() {
   const qc = useQueryClient();
 
@@ -81,16 +70,10 @@ export function useCreatePayment() {
     mutationFn: async (payload: CreatePaymentPayload) => {
       const userId = await getUserId();
 
-      /**
-       * IMPORTANT:
-       * - We intentionally cast supabase to `any`
-       * - This avoids generated RPC union type mismatches
-       * - This is the recommended approach for custom RPCs
-       */
-      const { error } = await (supabase as any).rpc(
+      const { error } = await supabase.rpc(
         "record_payment_with_smart_allocation",
         {
-          p_tenant_id: payload.tenant_id, // ✅ CRITICAL
+          p_tenant_id: payload.tenant_id,
           p_amount: payload.amount,
           p_payment_month: payload.payment_month,
           p_mpesa_code: payload.mpesa_code ?? null,
@@ -101,7 +84,6 @@ export function useCreatePayment() {
 
       if (error) throw error;
     },
-
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["payments"] });
@@ -109,11 +91,10 @@ export function useCreatePayment() {
 
       toast({ title: "Payment recorded successfully" });
     },
-
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({
         title: "Failed to record payment",
-        description: err?.message ?? "Unexpected error",
+        description: getErrorMessage(err),
         variant: "destructive",
       });
     },
@@ -134,7 +115,6 @@ export function useDeletePayment() {
 
       if (error) throw error;
     },
-
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["payments"] });
@@ -142,3 +122,4 @@ export function useDeletePayment() {
     },
   });
 }
+

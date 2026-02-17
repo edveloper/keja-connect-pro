@@ -6,6 +6,13 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Unit = Database['public']['Tables']['units']['Row'];
 type Property = Database['public']['Tables']['properties']['Row'];
+type CreateUnitInput = { property_id: string; unit_number: string };
+type BulkCreateUnitsInput = CreateUnitInput[];
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return 'Unexpected error';
+}
 
 type UnitWithProperty = Unit & {
   properties?: {
@@ -75,10 +82,10 @@ export function useUnits(propertyId?: string) {
 /**
  * Create a single unit. Validates that the property belongs to the signed-in user.
  */
-export function useCreateUnit(): UseMutationResult<Unit, any, { property_id: string; unit_number: string }, unknown> {
+export function useCreateUnit(): UseMutationResult<Unit, Error, CreateUnitInput, unknown> {
   const queryClient = useQueryClient();
 
-  return useMutation<Unit, any, { property_id: string; unit_number: string }, unknown>({
+  return useMutation<Unit, Error, CreateUnitInput, unknown>({
     mutationFn: async (unit) => {
       const userId = await getUserIdOrThrow();
 
@@ -105,8 +112,8 @@ export function useCreateUnit(): UseMutationResult<Unit, any, { property_id: str
       queryClient.invalidateQueries({ queryKey: ['units'] });
       toast({ title: 'Success', description: 'Unit created successfully' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Error', description: error?.message ?? 'Failed to create unit', variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 }
@@ -115,10 +122,10 @@ export function useCreateUnit(): UseMutationResult<Unit, any, { property_id: str
  * Bulk create units. Validates that all units belong to the same property and that the property is owned by the user.
  * Accepts an array of { property_id, unit_number }.
  */
-export function useBulkCreateUnits(): UseMutationResult<Unit[], any, { property_id: string; unit_number: string }[], unknown> {
+export function useBulkCreateUnits(): UseMutationResult<Unit[], Error, BulkCreateUnitsInput, unknown> {
   const queryClient = useQueryClient();
 
-  return useMutation<Unit[], any, { property_id: string; unit_number: string }[], unknown>({
+  return useMutation<Unit[], Error, BulkCreateUnitsInput, unknown>({
     mutationFn: async (units) => {
       if (!Array.isArray(units) || units.length === 0) throw new Error('No units provided');
 
@@ -151,8 +158,8 @@ export function useBulkCreateUnits(): UseMutationResult<Unit[], any, { property_
       queryClient.invalidateQueries({ queryKey: ['units'] });
       toast({ title: 'Success', description: `${data.length} units created` });
     },
-    onError: (error: any) => {
-      toast({ title: 'Error', description: error?.message ?? 'Failed to create units', variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 }
@@ -160,10 +167,10 @@ export function useBulkCreateUnits(): UseMutationResult<Unit[], any, { property_
 /**
  * Delete a unit. Ensures the unit belongs to a property owned by the current user before deleting.
  */
-export function useDeleteUnit(): UseMutationResult<void, any, string, unknown> {
+export function useDeleteUnit(): UseMutationResult<void, Error, string, unknown> {
   const queryClient = useQueryClient();
 
-  return useMutation<void, any, string, unknown>({
+  return useMutation<void, Error, string, unknown>({
     mutationFn: async (unitId: string) => {
       const userId = await getUserIdOrThrow();
 
@@ -192,8 +199,8 @@ export function useDeleteUnit(): UseMutationResult<void, any, string, unknown> {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       toast({ title: 'Success', description: 'Unit deleted' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Error', description: error?.message ?? 'Failed to delete unit', variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
 }

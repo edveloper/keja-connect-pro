@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"; // Added useMemo
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,7 @@ export function PropertyCard({
   const [deleteUnitId, setDeleteUnitId] = useState<string | null>(null);
   const [deletePropertyOpen, setDeletePropertyOpen] = useState(false);
 
-  // FIX: Natural Sorting for unit numbers within this specific property
+  // Natural sorting for unit numbers within this property.
   const propertyUnits = useMemo(() => {
     return units
       .filter((u) => u.property_id === property.id)
@@ -117,7 +117,7 @@ export function PropertyCard({
               
               {propertyUnits.length === 0 ? (
                 <div className="text-center py-6 bg-muted/20 rounded-xl border border-dashed">
-                  <p className="text-xs text-muted-foreground">No units found</p>
+                  <p className="text-xs text-muted-foreground">No units added yet</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">

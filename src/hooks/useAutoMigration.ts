@@ -1,7 +1,6 @@
-// src/hooks/useAutoMigration.ts
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { migrateToChargesSystem } from '@/scripts/migrateToCharges';
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { migrateToChargesSystem } from "@/scripts/migrateToCharges";
 
 interface MigrationState {
   isChecking: boolean;
@@ -11,9 +10,11 @@ interface MigrationState {
   error: string | null;
 }
 
+const MIGRATION_KEY = "charges_v1";
+
 /**
- * Hook that automatically migrates user data to charges system
- * Runs once per user by tracking migration status in localStorage
+ * Auto-migrate legacy users to charges system.
+ * Migration state is persisted in DB (user_migrations), not localStorage.
  */
 export function useAutoMigration() {
   const [state, setState] = useState<MigrationState>({
@@ -28,20 +29,44 @@ export function useAutoMigration() {
     checkAndMigrate();
   }, []);
 
+  async function upsertMigrationState(
+    userId: string,
+    values: {
+      status: "pending" | "running" | "completed" | "failed";
+      last_error?: string | null;
+      started_at?: string | null;
+      completed_at?: string | null;
+    }
+  ) {
+    await supabase.from("user_migrations").upsert(
+      {
+        user_id: userId,
+        migration_key: MIGRATION_KEY,
+        ...values,
+      },
+      { onConflict: "user_id,migration_key" }
+    );
+  }
+
   async function checkAndMigrate() {
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
-        setState(prev => ({ ...prev, isChecking: false }));
+        setState((prev) => ({ ...prev, isChecking: false }));
         return;
       }
 
-      // Check if this user has already been migrated
-      const migrationKey = `migration_complete_${user.id}`;
-      const alreadyMigrated = localStorage.getItem(migrationKey);
+      const { data: migrationRow } = await supabase
+        .from("user_migrations")
+        .select("status, last_error")
+        .eq("user_id", user.id)
+        .eq("migration_key", MIGRATION_KEY)
+        .maybeSingle();
 
-      if (alreadyMigrated === 'true') {
+      if (migrationRow?.status === "completed") {
         setState({
           isChecking: false,
           isMigrating: false,
@@ -52,12 +77,26 @@ export function useAutoMigration() {
         return;
       }
 
-      // Check if user actually needs migration (has tenants but no charges)
+      // If previous run failed, surface error and avoid infinite retry loops.
+      if (migrationRow?.status === "failed") {
+        setState({
+          isChecking: false,
+          isMigrating: false,
+          needsMigration: true,
+          migrationComplete: false,
+          error: migrationRow.last_error ?? "Previous migration attempt failed.",
+        });
+        return;
+      }
+
       const needsMigration = await checkIfMigrationNeeded(user.id);
-
       if (!needsMigration) {
-        // No migration needed, mark as complete
-        localStorage.setItem(migrationKey, 'true');
+        await upsertMigrationState(user.id, {
+          status: "completed",
+          last_error: null,
+          completed_at: new Date().toISOString(),
+        });
+
         setState({
           isChecking: false,
           isMigrating: false,
@@ -68,51 +107,83 @@ export function useAutoMigration() {
         return;
       }
 
-      // Migration needed - run it automatically
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isChecking: false,
         isMigrating: true,
         needsMigration: true,
+        error: null,
       }));
 
-      console.log('🔄 Auto-migrating user data to charges system...');
+      await upsertMigrationState(user.id, {
+        status: "running",
+        last_error: null,
+        started_at: new Date().toISOString(),
+        completed_at: null,
+      });
+
       const results = await migrateToChargesSystem();
-      
-      // Check if migration had any errors
-      const hasErrors = results.some(r => r.errors.length > 0);
-      
+      const hasErrors = results.some((r) => r.errors.length > 0);
+
       if (hasErrors) {
-        console.warn('⚠️ Migration completed with some errors:', results);
+        const errorMessage =
+          "Migration completed with warnings. Open /migrate for details.";
+
+        await upsertMigrationState(user.id, {
+          status: "failed",
+          last_error: errorMessage,
+          completed_at: null,
+        });
+
         setState({
           isChecking: false,
           isMigrating: false,
-          needsMigration: false,
-          migrationComplete: true,
-          error: 'Migration completed with warnings. Check console for details.',
+          needsMigration: true,
+          migrationComplete: false,
+          error: errorMessage,
         });
-      } else {
-        console.log('✅ Auto-migration completed successfully!');
-        setState({
-          isChecking: false,
-          isMigrating: false,
-          needsMigration: false,
-          migrationComplete: true,
-          error: null,
-        });
+        return;
       }
 
-      // Mark as migrated
-      localStorage.setItem(migrationKey, 'true');
+      await upsertMigrationState(user.id, {
+        status: "completed",
+        last_error: null,
+        completed_at: new Date().toISOString(),
+      });
 
-    } catch (err: any) {
-      console.error('❌ Auto-migration failed:', err);
+      setState({
+        isChecking: false,
+        isMigrating: false,
+        needsMigration: false,
+        migrationComplete: true,
+        error: null,
+      });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Migration failed";
+
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user?.id) {
+          await upsertMigrationState(user.id, {
+            status: "failed",
+            last_error: message,
+            completed_at: null,
+          });
+        }
+      } catch {
+        // Ignore secondary persistence failures here; UI still gets the root error.
+      }
+
       setState({
         isChecking: false,
         isMigrating: false,
         needsMigration: true,
         migrationComplete: false,
-        error: err.message,
+        error: message,
       });
     }
   }
@@ -121,53 +192,39 @@ export function useAutoMigration() {
 }
 
 /**
- * Check if user actually needs migration
- * Returns true if user has tenants but no charges
+ * Returns true if user has tenants but no charges yet.
  */
 async function checkIfMigrationNeeded(userId: string): Promise<boolean> {
-  // Get user's properties
   const { data: properties } = await supabase
-    .from('properties')
-    .select('id')
-    .eq('user_id', userId);
+    .from("properties")
+    .select("id")
+    .eq("user_id", userId);
 
-  if (!properties || properties.length === 0) {
-    return false; // No properties = no migration needed
-  }
+  if (!properties?.length) return false;
 
-  const propertyIds = properties.map(p => p.id);
-
-  // Get units for these properties
+  const propertyIds = properties.map((p) => p.id);
   const { data: units } = await supabase
-    .from('units')
-    .select('id')
-    .in('property_id', propertyIds);
+    .from("units")
+    .select("id")
+    .in("property_id", propertyIds);
 
-  if (!units || units.length === 0) {
-    return false; // No units = no migration needed
-  }
+  if (!units?.length) return false;
 
-  const unitIds = units.map(u => u.id);
-
-  // Get tenants for these units
+  const unitIds = units.map((u) => u.id);
   const { data: tenants } = await supabase
-    .from('tenants')
-    .select('id')
-    .in('unit_id', unitIds);
+    .from("tenants")
+    .select("id")
+    .in("unit_id", unitIds);
 
-  if (!tenants || tenants.length === 0) {
-    return false; // No tenants = no migration needed
-  }
+  if (!tenants?.length) return false;
 
-  const tenantIds = tenants.map(t => t.id);
-
-  // Check if charges exist for any of these tenants
+  const tenantIds = tenants.map((t) => t.id);
   const { data: charges } = await supabase
-    .from('charges')
-    .select('id')
-    .in('tenant_id', tenantIds)
+    .from("charges")
+    .select("id")
+    .in("tenant_id", tenantIds)
     .limit(1);
 
-  // If no charges exist, migration is needed
   return !charges || charges.length === 0;
 }
+

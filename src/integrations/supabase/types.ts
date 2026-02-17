@@ -331,17 +331,83 @@ export type Database = {
           },
         ]
       }
+      user_migrations: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          migration_key: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          migration_key: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          migration_key?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_opening_balance_charge: {
+        Args: {
+          p_amount: number
+          p_effective_month: string
+          p_note?: string | null
+          p_tenant_id: string
+        }
+        Returns: string
+      }
+      delete_tenant_cascade: {
+        Args: {
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      get_financial_statements: {
+        Args: {
+          p_month?: string | null
+          p_user_id?: string | null
+        }
+        Returns: {
+          balance: number
+          charge_month: string
+          property_name: string
+          tenant_name: string
+          total_charges: number
+          total_collected: number
+          unit_number: string
+        }[]
+      }
       insert_payment_with_allocations: {
         Args: {
-          p_allocations?: Json
+          p_allocations?: Json | null
           p_amount: number
-          p_mpesa_code?: string
-          p_note?: string
+          p_mpesa_code?: string | null
+          p_note?: string | null
           p_payment_month: string
           p_tenant_id: string
           p_user_id: string
@@ -350,6 +416,18 @@ export type Database = {
           created_at: string
           payment_id: string
         }[]
+      }
+      record_payment_with_smart_allocation: {
+        Args: {
+          p_amount: number
+          p_mpesa_code?: string | null
+          p_note?: string | null
+          p_payment_date?: string | null
+          p_payment_month: string
+          p_tenant_id: string
+          p_user_id?: string | null
+        }
+        Returns: string
       }
     }
     Enums: {

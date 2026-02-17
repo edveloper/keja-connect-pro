@@ -46,13 +46,17 @@ export function PageContainer({
   };
 
   return (
-    <div className={cn("min-h-screen pb-24 flex flex-col items-center w-full", className)}>
+    <div className={cn("app-shell min-h-screen pb-24 flex flex-col items-center w-full", className)}>
+      <div className="pointer-events-none absolute inset-0 soft-grid opacity-30" />
+      <div className="pointer-events-none absolute -top-16 -right-20 h-52 w-52 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute top-64 -left-16 h-44 w-44 rounded-full bg-sky-200/30 blur-3xl" />
+
       {(title || subtitle) && (
         <header className="sticky top-0 z-40 glass border-b border-border/50 shadow-nav w-full flex justify-center">
           <div className="px-5 py-5 w-full max-w-lg flex justify-between items-start">
             <div className="flex-1 min-w-0">
               {title && (
-                <h1 className="text-2xl font-bold text-foreground tracking-tight truncate">
+                <h1 className="text-2xl font-bold text-foreground tracking-tight truncate text-balance">
                   {title}
                 </h1>
               )}
@@ -118,7 +122,7 @@ export function PageContainer({
         </header>
       )}
 
-      <main className="px-5 py-5 w-full max-w-lg">
+      <main className="relative px-5 py-5 w-full max-w-lg">
         {children}
       </main>
     </div>

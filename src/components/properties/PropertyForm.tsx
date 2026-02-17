@@ -70,11 +70,11 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm mx-4 max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-sm mx-4 max-h-[90vh] overflow-y-auto rounded-2xl border border-border/70 bg-card/95 p-5 shadow-card backdrop-blur-md">
+        <DialogHeader><DialogTitle className="tracking-tight">{title}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           
-          <div className="space-y-2">
+          <div className="surface-panel space-y-2 p-3">
             <Label className="text-xs text-muted-foreground">Quick Formats</Label>
             <div className="grid grid-cols-3 gap-2">
               <Button type="button" variant="outline" className="text-[10px] h-7 px-1" onClick={() => { setNumberingStyle('numbers'); setUnitCount("10"); }}>1, 2, 3...</Button>
@@ -85,13 +85,13 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
 
           <div className="space-y-2">
             <Label htmlFor="name">Property Name</Label>
-            <Input id="name" placeholder="e.g. Blue Sky Apartments" value={name} onChange={(e) => setName(e.target.value)} required />
+            <Input id="name" className="h-11" placeholder="e.g. Blue Sky Apartments" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
 
           <div className="space-y-2">
             <Label>Style</Label>
             <Select value={numberingStyle} onValueChange={(v) => setNumberingStyle(v as NumberingStyle)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {NUMBERING_STYLES.map((s) => (
                   <SelectItem key={s.value} value={s.value}>
@@ -103,7 +103,7 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
           </div>
           
           {numberingStyle === 'block_unit' ? (
-            <div className="space-y-2 p-3 bg-muted/40 rounded-md">
+            <div className="surface-panel space-y-2 p-3">
               {blockConfigs.map((c, i) => (
                 <div key={i} className="flex gap-2 mb-2">
                   <Input className="w-12 h-8" value={c.block} onChange={(e) => { const u = [...blockConfigs]; u[i].block = e.target.value.toUpperCase(); setBlockConfigs(u); }} maxLength={1} />
@@ -115,7 +115,7 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
           ) : (
             <div className="space-y-2">
               <Label>Number of Units</Label>
-              <Input type="number" value={unitCount} onChange={(e) => setUnitCount(e.target.value)} placeholder="10" />
+              <Input className="h-11" type="number" value={unitCount} onChange={(e) => setUnitCount(e.target.value)} placeholder="10" />
             </div>
           )}
 

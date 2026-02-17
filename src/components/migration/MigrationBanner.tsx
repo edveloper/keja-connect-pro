@@ -1,11 +1,20 @@
 // src/components/migration/MigrationBanner.tsx
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { useAutoMigration } from '@/hooks/useAutoMigration';
 
-export function MigrationBanner() {
-  const migration = useAutoMigration();
+interface MigrationStateLike {
+  isChecking: boolean;
+  isMigrating: boolean;
+  migrationComplete: boolean;
+  error: string | null;
+}
 
+interface MigrationBannerProps {
+  migration: MigrationStateLike;
+}
+
+export function MigrationBanner({ migration }: MigrationBannerProps) {
   // Don't show anything if checking or already complete
   if (migration.isChecking || migration.migrationComplete) {
     return null;

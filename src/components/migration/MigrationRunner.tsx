@@ -6,9 +6,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { migrateToChargesSystem } from '@/scripts/migrateToCharges';
 import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 
+type MigrationResult = Awaited<ReturnType<typeof migrateToChargesSystem>>[number];
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return 'Migration failed';
+}
+
 export function MigrationRunner() {
   const [isRunning, setIsRunning] = useState(false);
-  const [results, setResults] = useState<any[] | null>(null);
+  const [results, setResults] = useState<MigrationResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const runMigration = async () => {
@@ -19,8 +26,8 @@ export function MigrationRunner() {
     try {
       const migrationResults = await migrateToChargesSystem();
       setResults(migrationResults);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setIsRunning(false);
     }

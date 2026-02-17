@@ -12,8 +12,10 @@ const navItems = [
 
 export function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border/50 shadow-nav safe-bottom">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
+      <div className="max-w-lg mx-auto px-3 pb-2">
+        <div className="glass rounded-2xl border border-border/60 shadow-nav px-1">
+          <div className="flex items-center justify-around h-16">
         {navItems.map((item) => (
           <RouterNavLink
             key={item.to}
@@ -22,7 +24,7 @@ export function BottomNav() {
             className={({ isActive }) => cn(
               "flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-0",
               isActive 
-                ? "text-primary bg-accent" 
+                ? "text-primary bg-accent shadow-sm ring-1 ring-primary/15" 
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             )}
           >
@@ -45,6 +47,8 @@ export function BottomNav() {
             )}
           </RouterNavLink>
         ))}
+          </div>
+        </div>
       </div>
     </nav>
   );

@@ -16,18 +16,10 @@ export async function exportFinancialStatementExcel({ monthKey }: Props) {
 
   const userId = session.user.id;
 
-  const { data, error } = await (
-    supabase.rpc as unknown as (
-      fn: string,
-      args?: Record<string, any>
-    ) => Promise<{ data: any[]; error: any }>
-  )(
-    "get_financial_statements",
-    {
-      p_month: monthKey,
-      p_user_id: userId,
-    }
-  );
+  const { data, error } = await supabase.rpc("get_financial_statements", {
+    p_month: monthKey,
+    p_user_id: userId,
+  });
 
   if (error) {
     console.error("Failed to export financial statements", error);

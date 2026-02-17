@@ -4,7 +4,7 @@ import { saveAs } from "file-saver";
 export function exportToExcel(
   sheets: {
     sheetName: string;
-    data: Record<string, any>[];
+    data: Record<string, unknown>[];
   }[],
   fileName: string
 ) {

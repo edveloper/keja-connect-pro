@@ -1,99 +1,106 @@
 import { Helmet } from "react-helmet-async";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ShieldCheck, Lock, EyeOff, Scale } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ShieldCheck, Lock, EyeOff, Scale, Database, UserCheck } from "lucide-react";
 
 export default function Privacy() {
   return (
     <>
-      {/* SEO METADATA */}
       <Helmet>
         <title>Privacy Policy | Keja-Connect</title>
         <meta
           name="description"
-          content="Read Keja-Connect’s privacy policy outlining how landlord and tenant data is stored, protected, and used in Kenya."
+          content="Read Keja-Connect's privacy policy explaining how property and tenant data is collected, used, and protected."
         />
       </Helmet>
 
-      <PageContainer title="Privacy & Policy" subtitle="Data handling and usage terms">
-        <div className="bg-card rounded-2xl border border-border/50 p-6 shadow-sm animate-in fade-in">
+      <PageContainer title="Privacy Policy" subtitle="How your data is handled">
+        <div className="space-y-5">
+          <Card className="surface-panel">
+            <CardContent className="pt-6 text-sm text-muted-foreground leading-relaxed">
+              Keja-Connect is designed to help landlords manage rental operations responsibly. This page
+              explains what data is used, why it is used, and your responsibilities when storing tenant
+              information.
+            </CardContent>
+          </Card>
 
-          {/* SEO INTRO */}
-          <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-            Keja-Connect is committed to protecting landlord and tenant data.
-            This privacy policy explains how information is collected, stored,
-            and used within the platform in compliance with responsible data
-            handling practices in Kenya.
-          </p>
+          <div className="grid grid-cols-1 gap-4">
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Database className="h-4 w-4 text-primary" />
+                  1. Data We Store
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Property details, unit records, tenant profile information, payment entries, and expense
+                records are stored to power core product features.
+              </CardContent>
+            </Card>
 
-          <div className="flex items-center gap-3 text-primary mb-6">
-            <ShieldCheck className="h-8 w-8" />
-            <div>
-              <h2 className="text-xl font-bold text-foreground">Our Commitment</h2>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                Keja Connect Privacy Standards
-              </p>
-            </div>
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-primary" />
+                  2. Protection & Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Access is scoped to authenticated users. Data visibility and operations are controlled via
+                row-level access rules to reduce unintended cross-account exposure.
+              </CardContent>
+            </Card>
+
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <EyeOff className="h-4 w-4 text-primary" />
+                  3. Confidentiality
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Keja-Connect does not sell your operational data for advertising. You remain responsible for
+                lawful capture and storage of tenant personal information.
+              </CardContent>
+            </Card>
+
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Scale className="h-4 w-4 text-primary" />
+                  4. Reporting Disclaimer
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Financial outputs are generated from user-entered records. Always verify your figures before
+                making legal, tax, or statutory submissions.
+              </CardContent>
+            </Card>
           </div>
 
-          <ScrollArea className="h-[60vh] pr-4">
-            <div className="space-y-8 text-sm text-muted-foreground leading-relaxed">
+          <Card className="surface-panel border-primary/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-primary" />
+                Your Responsibilities
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-2">
+              <p>Keep your login credentials secure and private.</p>
+              <p>Use accurate data to maintain reliable records and reports.</p>
+              <p>Only store tenant details where you have a lawful basis to do so.</p>
+              <p className="pt-1 text-xs uppercase tracking-wider font-semibold text-foreground">
+                Last reviewed: February 17, 2026
+              </p>
+            </CardContent>
+          </Card>
 
-              <section>
-                <div className="flex items-center gap-2 text-foreground font-semibold mb-3">
-                  <Lock className="h-4 w-4 text-primary" />
-                  <h3>1. Secure Data Management</h3>
-                </div>
-                <p>
-                  Keja Connect stores property details, tenant contact information,
-                  and financial records strictly for rent collection and expense
-                  tracking. We do not sell or distribute your private data to
-                  third-party marketing agencies.
-                </p>
-              </section>
-
-              <section>
-                <div className="flex items-center gap-2 text-foreground font-semibold mb-3">
-                  <EyeOff className="h-4 w-4 text-primary" />
-                  <h3>2. Tenant Confidentiality</h3>
-                </div>
-                <p>
-                  Landlords are responsible for ensuring tenant consent before
-                  storing personal data. Keja Connect functions solely as a
-                  digital management ledger and does not independently contact
-                  tenants.
-                </p>
-              </section>
-
-              <section>
-                <div className="flex items-center gap-2 text-foreground font-semibold mb-3">
-                  <Scale className="h-4 w-4 text-primary" />
-                  <h3>3. Accuracy & Disclaimers</h3>
-                </div>
-                <p>
-                  All calculations within Keja Connect are derived from user-
-                  provided data. Users should verify records before making legal,
-                  tax, or financial decisions based on generated reports.
-                </p>
-              </section>
-
-              <section className="bg-muted/50 p-4 rounded-xl border border-border/50">
-                <h3 className="font-bold text-foreground mb-2 text-xs uppercase">
-                  Compliance Note
-                </h3>
-                <p className="text-xs italic">
-                  By using Keja Connect, you agree to safeguard your login
-                  credentials and ensure lawful use of stored tenant data.
-                </p>
-              </section>
-
-              <div className="text-center pt-4 border-t border-border/50">
-                <p className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-                  Keja Connect — Property Management Simplified
-                </p>
-              </div>
-            </div>
-          </ScrollArea>
+          <div className="text-center text-xs text-muted-foreground uppercase tracking-widest">
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Keja-Connect Privacy Standards
+            </span>
+          </div>
         </div>
       </PageContainer>
     </>

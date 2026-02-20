@@ -204,3 +204,54 @@ export function useDeleteUnit(): UseMutationResult<void, Error, string, unknown>
     },
   });
 }
+
+/**
+ * Update a unit (number and/or availability), ensuring ownership via property.
+ */
+export function useUpdateUnit(): UseMutationResult<
+  Unit,
+  Error,
+  { id: string; unit_number?: string; is_available?: boolean },
+  unknown
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Unit,
+    Error,
+    { id: string; unit_number?: string; is_available?: boolean },
+    unknown
+  >({
+    mutationFn: async ({ id, ...updates }) => {
+      const userId = await getUserIdOrThrow();
+
+      const { data: unitRow, error: unitErr } = await supabase
+        .from('units')
+        .select('id, property_id, properties!inner(user_id)')
+        .eq('id', id)
+        .single();
+
+      if (unitErr) throw unitErr;
+      if (!unitRow || unitRow.properties?.user_id !== userId) throw new Error('Not authorized to update this unit');
+
+      const { data, error } = await supabase
+        .from('units')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Unit;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      toast({ title: 'Success', description: 'Unit updated' });
+    },
+    onError: (error: unknown) => {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
+}

@@ -64,6 +64,12 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/ffcc81a7-fcb9-4068-b629-45bad3e89808) and click on Share -> Publish.
 
+## Release operations
+
+For pre-release checks, migration order, smoke testing, and rollback guidance, use:
+
+- `docs/release-checklist-phase3.md`
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!

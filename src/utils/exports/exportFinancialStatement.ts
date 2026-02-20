@@ -3,9 +3,13 @@ import * as XLSX from "xlsx";
 
 type Props = {
   monthKey: string | null;
+  intelligence?: {
+    topRiskTenants?: Array<{ name: string; level: string; score: number; property?: string; unit?: string }>;
+    anomalies?: string[];
+  };
 };
 
-export async function exportFinancialStatementExcel({ monthKey }: Props) {
+export async function exportFinancialStatementExcel({ monthKey, intelligence }: Props) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -23,7 +27,12 @@ export async function exportFinancialStatementExcel({ monthKey }: Props) {
 
   if (error) {
     console.error("Failed to export financial statements", error);
-    throw error;
+    if (error.code === "PGRST203") {
+      throw new Error(
+        "Export RPC is ambiguous in this database (duplicate get_financial_statements overloads). Apply the latest migration and retry."
+      );
+    }
+    throw new Error(error.message || "Failed to export financial statement");
   }
 
   const rows = Array.isArray(data) ? data : [];
@@ -36,6 +45,31 @@ export async function exportFinancialStatementExcel({ monthKey }: Props) {
     worksheet,
     "Financial Statements"
   );
+
+  if (intelligence) {
+    const riskRows =
+      intelligence.topRiskTenants?.map((row, index) => ({
+        Rank: index + 1,
+        Tenant: row.name,
+        Property: row.property ?? "",
+        Unit: row.unit ?? "",
+        RiskLevel: row.level,
+        RiskScore: row.score,
+      })) ?? [];
+
+    const anomalyRows =
+      intelligence.anomalies?.map((row, index) => ({
+        Index: index + 1,
+        Anomaly: row,
+      })) ?? [];
+
+    if (riskRows.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(riskRows), "Risk Insights");
+    }
+    if (anomalyRows.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(anomalyRows), "Anomalies");
+    }
+  }
 
   XLSX.writeFile(
     workbook,

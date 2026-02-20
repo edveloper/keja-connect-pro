@@ -82,7 +82,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
   const filteredUnits = useMemo(() => {
     if (!selectedPropertyId || !allUnits) return [];
     const units = allUnits as unknown as UnitOption[];
-    return units.filter((u) => u.property_id === selectedPropertyId);
+    return units.filter((u) => u.property_id === selectedPropertyId && (u as unknown as { is_available?: boolean }).is_available !== false);
   }, [selectedPropertyId, allUnits]);
 
   const canSave = useMemo(() => {

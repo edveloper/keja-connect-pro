@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   AlertDialog,
@@ -13,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Building2, Plus, Home, Users, ChevronDown, Trash2 } from "lucide-react";
+import { Building2, Plus, Home, Users, ChevronDown, Trash2, Pencil } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 
 type Property = Tables<"properties">;
@@ -24,6 +25,9 @@ interface PropertyCardProps {
   units: Unit[];
   tenantCounts: Record<string, number>;
   onAddUnit: (propertyId: string, propertyName: string, numberingStyle?: string) => void;
+  onEditProperty: (property: Property) => void;
+  onEditUnit: (unitId: string, unitNumber: string) => void;
+  onToggleUnitAvailability: (unitId: string, isAvailable: boolean) => void;
   onDeleteUnit: (unitId: string) => void;
   onDeleteProperty: (propertyId: string) => void;
   index: number;
@@ -34,6 +38,9 @@ export function PropertyCard({
   units,
   tenantCounts,
   onAddUnit,
+  onEditProperty,
+  onEditUnit,
+  onToggleUnitAvailability,
   onDeleteUnit,
   onDeleteProperty,
   index,
@@ -41,6 +48,8 @@ export function PropertyCard({
   const [isOpen, setIsOpen] = useState(false);
   const [deleteUnitId, setDeleteUnitId] = useState<string | null>(null);
   const [deletePropertyOpen, setDeletePropertyOpen] = useState(false);
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [editingUnitNumber, setEditingUnitNumber] = useState("");
 
   // Natural sorting for unit numbers within this property.
   const propertyUnits = useMemo(() => {
@@ -55,6 +64,15 @@ export function PropertyCard({
     (sum, unit) => sum + (tenantCounts[unit.id] || 0),
     0
   );
+  const locationLine = [
+    property.street_address || property.address,
+    property.neighborhood,
+    property.town_city,
+    property.county,
+  ]
+    .map((v) => v?.trim())
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <>
@@ -64,7 +82,14 @@ export function PropertyCard({
       >
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger asChild>
-            <div className="p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+            <div
+              className="p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                onEditProperty(property);
+              }}
+              title="Double-click to edit property"
+            >
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-xl bg-primary/10 text-primary shrink-0">
                   <Building2 className="h-6 w-6" />
@@ -73,9 +98,9 @@ export function PropertyCard({
                   <h3 className="font-semibold text-foreground truncate text-base">
                     {property.name}
                   </h3>
-                  {property.address && (
+                  {locationLine && (
                     <p className="text-xs text-muted-foreground truncate mb-1">
-                      {property.address}
+                      {locationLine}
                     </p>
                   )}
                   <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -89,6 +114,18 @@ export function PropertyCard({
                     </span>
                   </div>
                 </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditProperty(property);
+                  }}
+                  aria-label={`Edit ${property.name}`}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 <ChevronDown
                   className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${
                     isOpen ? "rotate-180" : ""
@@ -127,8 +164,34 @@ export function PropertyCard({
                       className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border/50 shadow-sm"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-bold text-foreground truncate">#{unit.unit_number}</span>
-                        {tenantCounts[unit.id] ? (
+                        {editingUnitId === unit.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editingUnitNumber}
+                              onChange={(e) => setEditingUnitNumber(e.target.value)}
+                              className="h-7 w-20 text-xs"
+                            />
+                            <Button
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!editingUnitNumber.trim()) return;
+                                onEditUnit(unit.id, editingUnitNumber.trim());
+                                setEditingUnitId(null);
+                              }}
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-bold text-foreground truncate">#{unit.unit_number}</span>
+                        )}
+                        {!unit.is_available ? (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 uppercase border-amber-300 text-amber-700 bg-amber-50">
+                            Unavailable
+                          </Badge>
+                        ) : tenantCounts[unit.id] ? (
                           <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 uppercase">
                             Full
                           </Badge>
@@ -138,17 +201,42 @@ export function PropertyCard({
                           </Badge>
                         )}
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteUnitId(unit.id);
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingUnitId(unit.id);
+                            setEditingUnitNumber(unit.unit_number);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleUnitAvailability(unit.id, !unit.is_available);
+                          }}
+                        >
+                          {unit.is_available ? "Mark Unavailable" : "Mark Available"}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteUnitId(unit.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

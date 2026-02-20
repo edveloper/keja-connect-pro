@@ -14,20 +14,30 @@ export const NUMBERING_STYLES: { value: NumberingStyle; label: string; example: 
 
 type Property = Database['public']['Tables']['properties']['Row'];
 type PropertyInsert = Database['public']['Tables']['properties']['Insert'];
-type CreatePropertyInput = { name: string; address?: string; numbering_style?: NumberingStyle };
+
+type PropertyLocationFields = {
+  address?: string;
+  street_address?: string;
+  neighborhood?: string;
+  town_city?: string;
+  county?: string;
+  landmark?: string;
+  postal_code?: string;
+};
+
+type CreatePropertyInput = { name: string; numbering_style?: NumberingStyle } & PropertyLocationFields;
+type UpdatePropertyInput = { id: string; name: string; numbering_style?: NumberingStyle } & PropertyLocationFields;
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return 'Unexpected error';
 }
 
-/** Return the current user id or null (do not throw here; caller can decide) */
 async function getUserIdOrNull(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data?.session?.user?.id ?? null;
 }
 
-/** Return the current user id or throw if not authenticated */
 async function getUserIdOrThrow(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   const userId = data?.session?.user?.id;
@@ -35,9 +45,18 @@ async function getUserIdOrThrow(): Promise<string> {
   return userId;
 }
 
-/**
- * Fetch properties for the signed-in user
- */
+function composeLegacyAddress(location: PropertyLocationFields): string | null {
+  const parts = [
+    location.street_address?.trim(),
+    location.neighborhood?.trim(),
+    location.town_city?.trim(),
+    location.county?.trim(),
+  ].filter(Boolean);
+
+  if (parts.length > 0) return parts.join(', ');
+  return location.address?.trim() || null;
+}
+
 export function useProperties() {
   return useQuery<Property[], Error>({
     queryKey: ['properties'],
@@ -54,13 +73,10 @@ export function useProperties() {
       if (error) throw error;
       return (data ?? []) as Property[];
     },
-    staleTime: 1000 * 60, // 1 minute
+    staleTime: 1000 * 60,
   });
 }
 
-/**
- * Create a property and attach it to the current user
- */
 export function useCreateProperty(): UseMutationResult<Property, Error, CreatePropertyInput, unknown> {
   const queryClient = useQueryClient();
 
@@ -70,7 +86,13 @@ export function useCreateProperty(): UseMutationResult<Property, Error, CreatePr
 
       const insertPayload: PropertyInsert = {
         name: property.name,
-        address: property.address ?? null,
+        address: composeLegacyAddress(property),
+        street_address: property.street_address ?? null,
+        neighborhood: property.neighborhood ?? null,
+        town_city: property.town_city ?? null,
+        county: property.county ?? null,
+        landmark: property.landmark ?? null,
+        postal_code: property.postal_code ?? null,
         numbering_style: property.numbering_style ?? 'numbers',
         user_id: userId,
       };
@@ -94,9 +116,6 @@ export function useCreateProperty(): UseMutationResult<Property, Error, CreatePr
   });
 }
 
-/**
- * Delete a property by id
- */
 export function useDeleteProperty(): UseMutationResult<void, Error, string, unknown> {
   const queryClient = useQueryClient();
 
@@ -109,6 +128,53 @@ export function useDeleteProperty(): UseMutationResult<void, Error, string, unkn
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       queryClient.invalidateQueries({ queryKey: ['units'] });
       toast({ title: 'Success', description: 'Property removed' });
+    },
+    onError: (error: unknown) => {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    },
+  });
+}
+
+export function useUpdateProperty(): UseMutationResult<Property, Error, UpdatePropertyInput, unknown> {
+  const queryClient = useQueryClient();
+
+  return useMutation<Property, Error, UpdatePropertyInput, unknown>({
+    mutationFn: async ({ id, ...updates }) => {
+      const userId = await getUserIdOrThrow();
+
+      const { data: existing, error: checkError } = await supabase
+        .from('properties')
+        .select('id, user_id')
+        .eq('id', id)
+        .single();
+
+      if (checkError) throw checkError;
+      if (!existing || existing.user_id !== userId) throw new Error('Not authorized to update this property');
+
+      const { data, error } = await supabase
+        .from('properties')
+        .update({
+          name: updates.name,
+          address: composeLegacyAddress(updates),
+          street_address: updates.street_address ?? null,
+          neighborhood: updates.neighborhood ?? null,
+          town_city: updates.town_city ?? null,
+          county: updates.county ?? null,
+          landmark: updates.landmark ?? null,
+          postal_code: updates.postal_code ?? null,
+          numbering_style: updates.numbering_style ?? 'numbers',
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Property;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      toast({ title: 'Success', description: 'Property updated' });
     },
     onError: (error: unknown) => {
       toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });

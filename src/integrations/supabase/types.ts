@@ -169,6 +169,36 @@ export type Database = {
           },
         ]
       }
+      ops_events: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          event_type: string
+          id: string
+          payload_json: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          event_type: string
+          id?: string
+          payload_json?: Json
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          event_type?: string
+          id?: string
+          payload_json?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -213,34 +243,144 @@ export type Database = {
           },
         ]
       }
-      properties: {
+        reminder_queue: {
+          Row: {
+            channel: string
+            created_at: string
+            id: string
+            metadata_json: Json
+            month_key: string
+            notes: string | null
+            priority: number
+            scheduled_for: string | null
+            sent_at: string | null
+            status: string
+            tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+          Insert: {
+            channel?: string
+            created_at?: string
+            id?: string
+            metadata_json?: Json
+            month_key: string
+            notes?: string | null
+            priority?: number
+            scheduled_for?: string | null
+            sent_at?: string | null
+            status?: string
+            tenant_id: string
+          updated_at?: string
+          user_id?: string
+        }
+          Update: {
+            channel?: string
+            created_at?: string
+            id?: string
+            metadata_json?: Json
+            month_key?: string
+            notes?: string | null
+            priority?: number
+            scheduled_for?: string | null
+            sent_at?: string | null
+            status?: string
+            tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_narratives: {
         Row: {
-          address: string | null
           created_at: string
           id: string
-          name: string
-          numbering_style: string
+          input_json: Json
+          model: string
+          month_key: string
+          narrative_text: string
+          provider: string
           updated_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
-          address?: string | null
           created_at?: string
           id?: string
-          name: string
-          numbering_style?: string
+          input_json?: Json
+          model?: string
+          month_key: string
+          narrative_text: string
+          provider?: string
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
         Update: {
-          address?: string | null
           created_at?: string
           id?: string
-          name?: string
-          numbering_style?: string
+          input_json?: Json
+          model?: string
+          month_key?: string
+          narrative_text?: string
+          provider?: string
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
+        Relationships: []
+      }
+        properties: {
+          Row: {
+            address: string | null
+            county: string | null
+            created_at: string
+            id: string
+            landmark: string | null
+            name: string
+            neighborhood: string | null
+            numbering_style: string
+            postal_code: string | null
+            street_address: string | null
+            town_city: string | null
+            updated_at: string
+            user_id: string | null
+          }
+          Insert: {
+            address?: string | null
+            county?: string | null
+            created_at?: string
+            id?: string
+            landmark?: string | null
+            name: string
+            neighborhood?: string | null
+            numbering_style?: string
+            postal_code?: string | null
+            street_address?: string | null
+            town_city?: string | null
+            updated_at?: string
+            user_id?: string | null
+          }
+          Update: {
+            address?: string | null
+            county?: string | null
+            created_at?: string
+            id?: string
+            landmark?: string | null
+            name?: string
+            neighborhood?: string | null
+            numbering_style?: string
+            postal_code?: string | null
+            street_address?: string | null
+            town_city?: string | null
+            updated_at?: string
+            user_id?: string | null
+          }
         Relationships: []
       }
       tenants: {
@@ -299,10 +439,55 @@ export type Database = {
           },
         ]
       }
+      tenant_risk_snapshots: {
+        Row: {
+          created_at: string
+          factors_json: Json
+          id: string
+          month_key: string
+          risk_level: string
+          risk_score: number
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          factors_json?: Json
+          id?: string
+          month_key: string
+          risk_level: string
+          risk_score: number
+          tenant_id: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          factors_json?: Json
+          id?: string
+          month_key?: string
+          risk_level?: string
+          risk_score?: number
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_risk_snapshots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       units: {
         Row: {
           created_at: string
           id: string
+          is_available: boolean
           property_id: string
           unit_number: string
           user_id: string | null
@@ -310,6 +495,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_available?: boolean
           property_id: string
           unit_number: string
           user_id?: string | null
@@ -317,6 +503,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_available?: boolean
           property_id?: string
           unit_number?: string
           user_id?: string | null
@@ -372,6 +559,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_tenant_risk: {
+        Args: {
+          p_month_key: string
+        }
+        Returns: number
+      }
       create_opening_balance_charge: {
         Args: {
           p_amount: number
@@ -386,6 +579,12 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: undefined
+      }
+      enqueue_risk_reminders: {
+        Args: {
+          p_month_key: string
+        }
+        Returns: number
       }
       get_financial_statements: {
         Args: {

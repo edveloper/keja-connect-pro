@@ -16,6 +16,7 @@ interface StatsCardProps {
   format?: Format;
   currency?: string;
   locale?: string;
+  onClick?: () => void;
 }
 
 export const StatsCard: React.FC<StatsCardProps> = React.memo(function StatsCard({
@@ -28,6 +29,7 @@ export const StatsCard: React.FC<StatsCardProps> = React.memo(function StatsCard
   format = "auto",
   currency = "KES",
   locale = "en-KE",
+  onClick,
 }) {
   const { display, rawIsNumber, numericValue } = useMemo(() => {
     if (value === null || value === undefined) {
@@ -116,12 +118,14 @@ export const StatsCard: React.FC<StatsCardProps> = React.memo(function StatsCard
     <Card
       className={cn(
         "p-3 sm:p-4 animate-fade-in overflow-hidden relative elevate",
+        onClick ? "cursor-pointer" : "",
         cardVariantClass,
         className
       )}
       role="group"
       aria-label={`${label} statistic`}
       aria-busy={loading}
+      onClick={onClick}
     >
       <div className="flex flex-row items-center gap-2 sm:gap-3">
         <div
@@ -159,4 +163,3 @@ export const StatsCard: React.FC<StatsCardProps> = React.memo(function StatsCard
 });
 
 export default StatsCard;
-

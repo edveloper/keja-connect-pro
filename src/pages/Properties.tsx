@@ -4,25 +4,31 @@ import { Button } from "@/components/ui/button";
 import { PropertyForm, generateUnitNumbers, BlockConfig } from "@/components/properties/PropertyForm";
 import { UnitForm } from "@/components/properties/UnitForm";
 import { PropertyCard } from "@/components/properties/PropertyCard";
-import { useProperties, useCreateProperty, useDeleteProperty, NumberingStyle } from "@/hooks/useProperties";
-import { useUnits, useCreateUnit, useDeleteUnit, useBulkCreateUnits } from "@/hooks/useUnits";
+import { useProperties, useCreateProperty, useDeleteProperty, useUpdateProperty, NumberingStyle } from "@/hooks/useProperties";
+import { useUnits, useCreateUnit, useDeleteUnit, useBulkCreateUnits, useUpdateUnit } from "@/hooks/useUnits";
 import { useTenants } from "@/hooks/useTenants";
 import { Plus, Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Property = Tables<"properties">;
 
 export default function Properties() {
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [addUnitTarget, setAddUnitTarget] = useState<{ id: string; name: string; numberingStyle?: string } | null>(null);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
 
   const { data: properties, isLoading: propertiesLoading } = useProperties();
   const { data: units, isLoading: unitsLoading } = useUnits();
   const { data: tenants } = useTenants();
   
   const createProperty = useCreateProperty();
+  const updateProperty = useUpdateProperty();
   const deleteProperty = useDeleteProperty();
   const createUnit = useCreateUnit();
   const bulkCreateUnits = useBulkCreateUnits();
   const deleteUnit = useDeleteUnit();
+  const updateUnit = useUpdateUnit();
 
   // Natural Sorting for Units
   const sortedUnits = useMemo(() => {
@@ -43,12 +49,28 @@ export default function Properties() {
   const handleAddProperty = (data: { 
     name: string; 
     address?: string; 
+    street_address?: string;
+    neighborhood?: string;
+    town_city?: string;
+    county?: string;
+    landmark?: string;
+    postal_code?: string;
     numbering_style: NumberingStyle; 
     unit_count?: number;
     block_configs?: BlockConfig[];
   }) => {
     createProperty.mutate(
-      { name: data.name, address: data.address, numbering_style: data.numbering_style },
+      {
+        name: data.name,
+        address: data.address,
+        street_address: data.street_address,
+        neighborhood: data.neighborhood,
+        town_city: data.town_city,
+        county: data.county,
+        landmark: data.landmark,
+        postal_code: data.postal_code,
+        numbering_style: data.numbering_style,
+      },
       {
         onSuccess: (newProperty) => {
           if (data.unit_count && data.unit_count > 0) {
@@ -112,6 +134,9 @@ export default function Properties() {
               units={sortedUnits} // Now using the sorted units list
               tenantCounts={tenantCounts}
               onAddUnit={(id, name, numberingStyle) => setAddUnitTarget({ id, name, numberingStyle })}
+              onEditProperty={(p) => setEditingProperty(p)}
+              onEditUnit={(unitId, unitNumber) => updateUnit.mutate({ id: unitId, unit_number: unitNumber })}
+              onToggleUnitAvailability={(unitId, isAvailable) => updateUnit.mutate({ id: unitId, is_available: isAvailable })}
               onDeleteUnit={(uId) => deleteUnit.mutate(uId)}
               onDeleteProperty={(pId) => deleteProperty.mutate(pId)}
               index={index}
@@ -126,6 +151,47 @@ export default function Properties() {
         onSubmit={handleAddProperty}
         isLoading={isCreating}
       />
+
+      {editingProperty && (
+        <PropertyForm
+          open={!!editingProperty}
+          onOpenChange={(open) => {
+            if (!open) setEditingProperty(null);
+          }}
+          defaultValues={{
+            name: editingProperty.name,
+            address: editingProperty.address ?? "",
+            street_address: editingProperty.street_address ?? "",
+            neighborhood: editingProperty.neighborhood ?? "",
+            town_city: editingProperty.town_city ?? "",
+            county: editingProperty.county ?? "",
+            landmark: editingProperty.landmark ?? "",
+            postal_code: editingProperty.postal_code ?? "",
+            numbering_style: (editingProperty.numbering_style as NumberingStyle) ?? "numbers",
+          }}
+          title="Edit Property"
+          onSubmit={(data) => {
+            updateProperty.mutate(
+              {
+                id: editingProperty.id,
+                name: data.name,
+                address: data.address,
+                street_address: data.street_address,
+                neighborhood: data.neighborhood,
+                town_city: data.town_city,
+                county: data.county,
+                landmark: data.landmark,
+                postal_code: data.postal_code,
+                numbering_style: data.numbering_style,
+              },
+              {
+                onSuccess: () => setEditingProperty(null),
+              }
+            );
+          }}
+          isLoading={updateProperty.isPending}
+        />
+      )}
 
       {addUnitTarget && (
         <UnitForm

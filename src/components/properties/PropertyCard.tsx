@@ -157,15 +157,15 @@ export function PropertyCard({
                   <p className="text-xs text-muted-foreground">No units added yet</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                   {propertyUnits.map((unit) => (
                     <div
                       key={unit.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border/50 shadow-sm"
+                      className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-2.5 rounded-xl bg-background border border-border/50 shadow-sm overflow-hidden"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
                         {editingUnitId === unit.id ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Input
                               value={editingUnitNumber}
                               onChange={(e) => setEditingUnitNumber(e.target.value)}
@@ -201,7 +201,7 @@ export function PropertyCard({
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex w-full sm:w-auto flex-wrap sm:flex-nowrap items-center justify-end gap-1">
                         <Button
                           size="icon"
                           variant="ghost"
@@ -217,7 +217,7 @@ export function PropertyCard({
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 px-2 text-[10px]"
+                          className="h-6 px-2 text-[10px] leading-tight whitespace-normal"
                           onClick={(e) => {
                             e.stopPropagation();
                             onToggleUnitAvailability(unit.id, !unit.is_available);

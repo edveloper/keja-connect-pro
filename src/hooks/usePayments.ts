@@ -14,6 +14,24 @@ export type CreatePaymentPayload = {
 };
 
 function getErrorMessage(error: unknown): string {
+  if (typeof error === "object" && error !== null) {
+    const maybeMessage =
+      "message" in error && typeof (error as { message?: unknown }).message === "string"
+        ? (error as { message: string }).message
+        : null;
+    const maybeDetails =
+      "details" in error && typeof (error as { details?: unknown }).details === "string"
+        ? (error as { details: string }).details
+        : null;
+    const maybeHint =
+      "hint" in error && typeof (error as { hint?: unknown }).hint === "string"
+        ? (error as { hint: string }).hint
+        : null;
+
+    const parts = [maybeMessage, maybeDetails, maybeHint].filter(Boolean);
+    if (parts.length > 0) return parts.join(" | ");
+  }
+
   if (error instanceof Error) return error.message;
   return "Unexpected error";
 }
@@ -79,6 +97,8 @@ export function useCreatePayment() {
           p_mpesa_code: payload.mpesa_code ?? null,
           p_note: payload.note ?? null,
           p_user_id: userId,
+          // Pass explicitly to avoid ambiguous-overload resolution when multiple RPC signatures exist.
+          p_payment_date: null,
         }
       );
 
@@ -122,4 +142,3 @@ export function useDeletePayment() {
     },
   });
 }
-

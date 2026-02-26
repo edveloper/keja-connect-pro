@@ -1,26 +1,36 @@
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Database, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Smartphone } from "lucide-react";
+import { Database, User, Bell, Shield, HelpCircle, LogOut, ChevronRight, Smartphone, FileSpreadsheet, BarChart3 } from "lucide-react";
+import { OnboardingImportPanel } from "@/components/settings/OnboardingImportPanel";
+import { useNavigate } from "react-router-dom";
 
 const settingsItems = [
-  { icon: User, label: "Account", description: "Manage your profile" },
-  { icon: Bell, label: "Notifications", description: "SMS & push alerts" },
-  { icon: Database, label: "Data & Backup", description: "Export your data" },
-  { icon: Shield, label: "Security", description: "Password & login" },
-  { icon: Smartphone, label: "M-Pesa Settings", description: "Configure SMS parsing" },
-  { icon: HelpCircle, label: "Help & Support", description: "FAQs and contact" },
+  { icon: FileSpreadsheet, label: "Onboarding Imports", description: "Map columns and import existing sheets", route: "/settings" },
+  { icon: BarChart3, label: "Reports & Documents", description: "Summary, statement, operations and loan packs", route: "/reports" },
+  { icon: User, label: "Account", description: "Manage profile and workspace ownership", route: "/about" },
+  { icon: Bell, label: "Notifications", description: "Reminder and follow-up workflow controls", route: "/reports" },
+  { icon: Shield, label: "Security", description: "RLS-backed data isolation with Supabase", route: "/privacy" },
+  { icon: Smartphone, label: "M-Pesa Settings", description: "Configure payment reference workflows", route: "/help" },
+  { icon: HelpCircle, label: "Help & Support", description: "Guides for onboarding and monthly operations", route: "/help" },
 ];
 
 export default function Settings() {
+  const navigate = useNavigate();
+
   return (
-    <PageContainer title="Settings" subtitle="Manage your account">
+    <PageContainer title="Settings" subtitle="Onboarding, exports and workspace controls">
+      <div className="mb-4">
+        <OnboardingImportPanel />
+      </div>
+
       <div className="space-y-3">
         {settingsItems.map((item, index) => (
           <Card 
             key={item.label}
             className="p-4 animate-slide-up cursor-pointer hover:shadow-md transition-all"
             style={{ animationDelay: `${index * 50}ms` }}
+            onClick={() => navigate(item.route)}
           >
             <div className="flex items-center gap-4">
               <div className="p-2.5 rounded-lg bg-muted text-muted-foreground">
@@ -42,13 +52,13 @@ export default function Settings() {
             <Database className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Connect Database</h3>
+            <h3 className="font-semibold text-foreground">Data & Compliance Readiness</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Connect Supabase to persist your data and enable multi-device sync.
+              Use Reports exports to generate audit trails, lender packs, and monthly evidence files.
             </p>
           </div>
-          <Button variant="outline" className="w-full">
-            Setup Supabase
+          <Button variant="outline" className="w-full" onClick={() => navigate("/reports")}>
+            Open Reports Exports
           </Button>
         </div>
       </Card>
@@ -62,7 +72,7 @@ export default function Settings() {
       </Button>
 
       <p className="text-center text-xs text-muted-foreground mt-6">
-        Keja-Connect v1.0.0
+        Keja-Connect v1.1.0
       </p>
     </PageContainer>
   );

@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, ShieldCheck, Users, MapPin, BarChart3, Wallet } from "lucide-react";
+import { Building2, ShieldCheck, Users, MapPin, BarChart3, Wallet, FileSpreadsheet, Landmark } from "lucide-react";
 
 export default function About() {
   return (
@@ -65,7 +65,7 @@ export default function About() {
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
                 Monitor collections, arrears, overpayments, and expenses in real time, then export
-                summaries for easier month-end review.
+                summaries, statements, operations packs, and loan packs for easier month-end review.
               </CardContent>
             </Card>
 
@@ -79,6 +79,32 @@ export default function About() {
               <CardContent className="text-sm text-muted-foreground">
                 The product reflects common Kenya-based rental workflows, including mobile-money aligned
                 collection practices and flexible monthly payment behavior.
+              </CardContent>
+            </Card>
+
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileSpreadsheet className="h-4 w-4 text-primary" />
+                  Faster Onboarding
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Import existing spreadsheets with column mapping, so landlords can migrate from
+                statements and legacy sheets without retyping data.
+              </CardContent>
+            </Card>
+
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Landmark className="h-4 w-4 text-primary" />
+                  Lender-Ready Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Export loan-ready evidence with rent rolls, arrears, income and cost histories in
+                structured formats for financiers and auditors.
               </CardContent>
             </Card>
           </div>

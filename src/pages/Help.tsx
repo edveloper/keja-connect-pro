@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Building2, Users, Wallet, FileSpreadsheet, Phone, ArrowRight } from "lucide-react";
+import { Building2, Users, Wallet, FileSpreadsheet, Phone, ArrowRight, Landmark } from "lucide-react";
 
 export default function Help() {
   return (
@@ -29,12 +29,12 @@ export default function Help() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-primary" />
-                  1. Set Up Properties
+                  1. Onboard Existing Data
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                Add each property, define units, and confirm numbering style. Clean setup here makes
-                tenant and payment records much easier to manage.
+                Go to Settings and use Onboarding Import. You can import standard tabs
+                (`Properties`, `Units`, `Tenants`) or use Manual Heading Mapping for statement-style sheets.
               </CardContent>
             </Card>
 
@@ -42,12 +42,12 @@ export default function Help() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
-                  2. Add Tenants
+                  2. Validate Tenant Assignments
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                Assign tenants to units, set monthly rent, and capture opening balances where needed.
-                This ensures accurate arrears and overpayment tracking.
+                After import, review unit-to-tenant mappings and rent values. Any missing property column
+                can be handled with a default property name during mapping.
               </CardContent>
             </Card>
 
@@ -55,7 +55,7 @@ export default function Help() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Wallet className="h-4 w-4 text-primary" />
-                  3. Record Payments & Expenses
+                  3. Record Collections & Costs
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
@@ -68,12 +68,25 @@ export default function Help() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4 text-primary" />
-                  4. Review Reports
+                  4. Export Reports & Packs
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                Use Financial Reports to review collection efficiency, expenses, and net surplus/deficit.
-                Export summary and statement files for sharing or archiving.
+                Use Reports to export Summary, Statement, Operations Pack, and Loan Pack. These include
+                rent roll, arrears, collections, expenses, and risk/reminder intelligence.
+              </CardContent>
+            </Card>
+
+            <Card className="elevate">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Landmark className="h-4 w-4 text-primary" />
+                  5. Loan / Compliance Use Cases
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                For loan applications, use Loan Pack and Statement together. For monthly compliance and audits,
+                export Operations Pack plus Summary for the exact reporting period.
               </CardContent>
             </Card>
           </div>
@@ -124,8 +137,15 @@ export default function Help() {
                 <AccordionItem value="help-3">
                   <AccordionTrigger>What should I export at month-end?</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground">
-                    Export both the summary and statement from Reports. Use the summary for quick review
-                    and the statement for audit/history detail.
+                    Export Summary + Operations Pack for management review. Export Statement for detailed
+                    transaction evidence. Export Loan Pack when sharing with lenders.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="help-5">
+                  <AccordionTrigger>Can I import statement-style spreadsheets?</AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Yes. Use Manual Heading Mapping in Settings. Choose the sheet, set the header row,
+                    map tenant/unit/rent/balance columns, and set a default property name if needed.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="help-4">

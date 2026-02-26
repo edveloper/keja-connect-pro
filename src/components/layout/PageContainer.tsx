@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   MessageSquare,
   Info,
+  Settings,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -86,6 +87,12 @@ export function PageContainer({
                 <DropdownMenuItem onClick={() => navigate("/about")}>
                   <Info className="mr-2 h-4 w-4" />
                   <span>About Keja Connect</span>
+                </DropdownMenuItem>
+
+                {/* SETTINGS */}
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
                 </DropdownMenuItem>
 
                 {/* HELP */}

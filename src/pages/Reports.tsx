@@ -45,13 +45,38 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { buildAssistantQueue } from "@/lib/assistantQueue";
 import { AssistantPanel } from "@/components/intelligence/AssistantPanel";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartsTooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+  LineChart,
+  Line,
+} from "recharts";
 
 import { exportFinancialSummaryExcel } from "@/utils/exports/exportFinancialSummary";
 import { exportFinancialStatementExcel } from "@/utils/exports/exportFinancialStatement";
+import {
+  exportLandlordOperationsPackExcel,
+  exportLoanApplicationPackExcel,
+  exportTenantLedgerExcel,
+  exportPropertyPerformancePackExcel,
+  exportMasterBusinessPackExcel,
+  printLoanPackLayout,
+  printMasterPackLayout,
+} from "@/utils/exports/exportLandlordDocuments";
 
 export default function Reports() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [exportsOpen, setExportsOpen] = useState(false);
   const navigate = useNavigate();
 
   const monthKey = selectedDate ? format(selectedDate, "yyyy-MM") : null;
@@ -105,6 +130,10 @@ export default function Reports() {
   const totalExpensesAmount = totalExpenses ?? 0;
   const netIncome = totalCollected - totalExpensesAmount;
   const isProfit = netIncome >= 0;
+  const outstandingBalance = dashboardData?.stats?.totalBalance ?? 0;
+  const occupiedUnits = dashboardData?.stats?.occupiedUnits ?? 0;
+  const totalUnits = dashboardData?.stats?.totalUnits ?? 0;
+  const occupancyRate = totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0;
 
   const expectedRent = useMemo(() => {
     return (
@@ -197,6 +226,167 @@ export default function Reports() {
     }
   };
 
+  const handleExportOperationsPack = async () => {
+    try {
+      await exportLandlordOperationsPackExcel({
+        monthKey,
+        totalCollected,
+        totalExpenses: totalExpensesAmount,
+        netIncome,
+        collectionRate,
+        occupancyRate,
+        outstandingBalance,
+        expectedRent,
+        units: dashboardData?.units ?? [],
+        payments: filteredPayments,
+        expenses: expenses ?? [],
+        topRiskTenants,
+        reminders: reminderQueue,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to export operations pack";
+      toast({ title: "Export failed", description: message, variant: "destructive" });
+    }
+  };
+
+  const handleExportLoanPack = async () => {
+    try {
+      await exportLoanApplicationPackExcel({
+        monthKey,
+        totalCollected,
+        totalExpenses: totalExpensesAmount,
+        netIncome,
+        collectionRate,
+        occupancyRate,
+        outstandingBalance,
+        expectedRent,
+        units: dashboardData?.units ?? [],
+        payments: filteredPayments,
+        expenses: expenses ?? [],
+        topRiskTenants,
+        reminders: reminderQueue,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to export loan pack";
+      toast({ title: "Export failed", description: message, variant: "destructive" });
+    }
+  };
+
+  const handleExportTenantLedger = async () => {
+    try {
+      await exportTenantLedgerExcel({
+        monthKey,
+        totalCollected,
+        totalExpenses: totalExpensesAmount,
+        netIncome,
+        collectionRate,
+        occupancyRate,
+        outstandingBalance,
+        expectedRent,
+        units: dashboardData?.units ?? [],
+        payments: filteredPayments,
+        expenses: expenses ?? [],
+        topRiskTenants,
+        reminders: reminderQueue,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to export tenant ledger";
+      toast({ title: "Export failed", description: message, variant: "destructive" });
+    }
+  };
+
+  const handleExportPropertyPerformance = async () => {
+    try {
+      await exportPropertyPerformancePackExcel({
+        monthKey,
+        totalCollected,
+        totalExpenses: totalExpensesAmount,
+        netIncome,
+        collectionRate,
+        occupancyRate,
+        outstandingBalance,
+        expectedRent,
+        units: dashboardData?.units ?? [],
+        payments: filteredPayments,
+        expenses: expenses ?? [],
+        topRiskTenants,
+        reminders: reminderQueue,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to export property performance pack";
+      toast({ title: "Export failed", description: message, variant: "destructive" });
+    }
+  };
+
+  const handleExportMasterPack = async () => {
+    try {
+      await exportMasterBusinessPackExcel({
+        monthKey,
+        totalCollected,
+        totalExpenses: totalExpensesAmount,
+        netIncome,
+        collectionRate,
+        occupancyRate,
+        outstandingBalance,
+        expectedRent,
+        units: dashboardData?.units ?? [],
+        payments: filteredPayments,
+        expenses: expenses ?? [],
+        topRiskTenants,
+        reminders: reminderQueue,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to export master business pack";
+      toast({ title: "Export failed", description: message, variant: "destructive" });
+    }
+  };
+
+  const handlePrintLoanPack = async () => {
+    try {
+      await printLoanPackLayout({
+        monthKey,
+        totalCollected,
+        totalExpenses: totalExpensesAmount,
+        netIncome,
+        collectionRate,
+        occupancyRate,
+        outstandingBalance,
+        expectedRent,
+        units: dashboardData?.units ?? [],
+        payments: filteredPayments,
+        expenses: expenses ?? [],
+        topRiskTenants,
+        reminders: reminderQueue,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to open print layout";
+      toast({ title: "Print failed", description: message, variant: "destructive" });
+    }
+  };
+
+  const handlePrintMasterPack = async () => {
+    try {
+      await printMasterPackLayout({
+        monthKey,
+        totalCollected,
+        totalExpenses: totalExpensesAmount,
+        netIncome,
+        collectionRate,
+        occupancyRate,
+        outstandingBalance,
+        expectedRent,
+        units: dashboardData?.units ?? [],
+        payments: filteredPayments,
+        expenses: expenses ?? [],
+        topRiskTenants,
+        reminders: reminderQueue,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to open print layout";
+      toast({ title: "Print failed", description: message, variant: "destructive" });
+    }
+  };
+
   const topExpenseCategories = useMemo(() => {
     return Object.entries(expensesByCategory)
       .map(([name, amount]) => ({ name, amount }))
@@ -280,6 +470,78 @@ export default function Reports() {
         .find((u) => (u.balance || 0) > 0),
     [dashboardData]
   );
+  const topArrearsUnits = useMemo(
+    () =>
+      [...(dashboardData?.units ?? [])]
+        .filter((u) => Number(u.balance || 0) > 0)
+        .sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0))
+        .slice(0, 5),
+    [dashboardData]
+  );
+
+  const occupancyChartData = useMemo(
+    () => [
+      { name: "Occupied", value: occupiedUnits },
+      { name: "Vacant", value: Math.max(0, totalUnits - occupiedUnits) },
+    ],
+    [occupiedUnits, totalUnits]
+  );
+
+  const paymentStatusChartData = useMemo(() => {
+    const statusCounts = new Map<string, number>();
+    (dashboardData?.units ?? [])
+      .filter((u) => !!u.tenant_id)
+      .forEach((u) => {
+        const key = String(u.payment_status || "unknown");
+        statusCounts.set(key, (statusCounts.get(key) || 0) + 1);
+      });
+    return [...statusCounts.entries()].map(([name, value]) => ({ name, value }));
+  }, [dashboardData]);
+
+  const propertyPerformanceChartData = useMemo(() => {
+    const map = new Map<string, { expected: number; collected: number; arrears: number }>();
+    (dashboardData?.units ?? []).forEach((u) => {
+      const key = u.property_name ?? "Unknown";
+      const row = map.get(key) || { expected: 0, collected: 0, arrears: 0 };
+      row.expected += Number(u.rent_amount || 0);
+      row.collected += Number(u.total_allocated || 0);
+      row.arrears += Math.max(0, Number(u.balance || 0));
+      map.set(key, row);
+    });
+    return [...map.entries()].map(([property, v]) => ({
+      property,
+      expected: Math.round(v.expected),
+      collected: Math.round(v.collected),
+      arrears: Math.round(v.arrears),
+    }));
+  }, [dashboardData]);
+
+  const cashflowTrendData = useMemo(() => {
+    const map = new Map<string, { collected: number; expenses: number }>();
+    const labelFor = (isoDate: string) => {
+      const d = new Date(isoDate);
+      return selectedDate ? format(d, "MMM d") : format(d, "yyyy-MM");
+    };
+
+    filteredPayments.forEach((p) => {
+      const key = labelFor(p.payment_date);
+      const row = map.get(key) || { collected: 0, expenses: 0 };
+      row.collected += Number(p.amount || 0);
+      map.set(key, row);
+    });
+    (expenses ?? []).forEach((e) => {
+      const key = labelFor(e.expense_date);
+      const row = map.get(key) || { collected: 0, expenses: 0 };
+      row.expenses += Number(e.amount || 0);
+      map.set(key, row);
+    });
+    return [...map.entries()].map(([period, v]) => ({
+      period,
+      collected: Math.round(v.collected),
+      expenses: Math.round(v.expenses),
+      net: Math.round(v.collected - v.expenses),
+    }));
+  }, [filteredPayments, expenses, selectedDate]);
 
   const assistantActions = useMemo(
     () =>
@@ -371,19 +633,28 @@ export default function Reports() {
   return (
     <PageContainer title="Financial Reports" subtitle={dateLabel}>
       {/* EXPORT ACTIONS */}
-      <div className="surface-panel mb-4 p-2">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-        <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportSummary}>
-          <Download className="h-4 w-4 mr-2" />
-          Export Summary
-        </Button>
-
-        <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportStatement}>
-          <Download className="h-4 w-4 mr-2" />
-          Export Statement
-        </Button>
-        </div>
-      </div>
+      <Collapsible open={exportsOpen} onOpenChange={setExportsOpen} className="mb-4">
+        <CollapsibleTrigger className="surface-panel w-full p-3 flex items-center justify-center relative">
+          <div className="flex items-center gap-2">
+            <Download className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold text-center">Downloads & Print Layouts</span>
+          </div>
+          <ChevronDown className={`absolute right-3 h-4 w-4 text-slate-500 transition-transform duration-200 ${exportsOpen ? "rotate-180" : ""}`} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <div className="surface-panel p-2 flex flex-wrap items-center justify-center gap-2">
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportSummary}><Download className="h-4 w-4 mr-2" />Summary</Button>
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportStatement}><Download className="h-4 w-4 mr-2" />Statement</Button>
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportOperationsPack}><Download className="h-4 w-4 mr-2" />Operations Pack</Button>
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportLoanPack}><Download className="h-4 w-4 mr-2" />Loan Pack</Button>
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportTenantLedger}><Download className="h-4 w-4 mr-2" />Tenant Ledger</Button>
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportPropertyPerformance}><Download className="h-4 w-4 mr-2" />Property Pack</Button>
+            <Button size="sm" className="w-full sm:w-auto" onClick={handleExportMasterPack}><Download className="h-4 w-4 mr-2" />Master Pack</Button>
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handlePrintLoanPack}>Print Loan PDF</Button>
+            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handlePrintMasterPack}>Print Master PDF</Button>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* DATE SELECTOR */}
       <div className="surface-panel flex items-center justify-between mb-6 p-2">
@@ -467,7 +738,109 @@ export default function Reports() {
                 KES {totalExpensesAmount.toLocaleString()}
               </p>
             </Card>
+            <Card className="p-4">
+              <p className="text-xs uppercase font-bold text-slate-400">
+                Occupancy Rate
+              </p>
+              <p className="text-xl font-black">
+                {occupancyRate.toFixed(1)}%
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {occupiedUnits}/{totalUnits} units occupied
+              </p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs uppercase font-bold text-slate-400">
+                Outstanding Balance
+              </p>
+              <p className="text-xl font-black">
+                KES {outstandingBalance.toLocaleString()}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Total unpaid tenant balances
+              </p>
+            </Card>
           </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="p-5">
+              <h3 className="font-bold text-sm mb-3">Occupancy Mix</h3>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={occupancyChartData} dataKey="value" nameKey="name" outerRadius={85}>
+                      <Cell fill="#2563eb" />
+                      <Cell fill="#94a3b8" />
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <h3 className="font-bold text-sm mb-3">Tenant Payment Status</h3>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={paymentStatusChartData} dataKey="value" nameKey="name" outerRadius={85}>
+                      {paymentStatusChartData.map((entry) => (
+                        <Cell
+                          key={entry.name}
+                          fill={
+                            entry.name === "paid" || entry.name === "overpaid"
+                              ? "#16a34a"
+                              : entry.name === "partial"
+                                ? "#f59e0b"
+                                : "#dc2626"
+                          }
+                        />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+
+          <Card className="p-5">
+            <h3 className="font-bold text-sm mb-3">Property Financial Performance</h3>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={propertyPerformanceChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="property" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Bar dataKey="expected" fill="#3b82f6" name="Expected Rent" />
+                  <Bar dataKey="collected" fill="#16a34a" name="Collected" />
+                  <Bar dataKey="arrears" fill="#dc2626" name="Arrears" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <h3 className="font-bold text-sm mb-3">Cashflow Trend</h3>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={cashflowTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="collected" stroke="#16a34a" strokeWidth={2} dot={false} name="Collected" />
+                  <Line type="monotone" dataKey="expenses" stroke="#f59e0b" strokeWidth={2} dot={false} name="Expenses" />
+                  <Line type="monotone" dataKey="net" stroke="#2563eb" strokeWidth={2} dot={false} name="Net" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
 
           {/* COLLECTION RATE */}
           <Card className="p-5">
@@ -504,6 +877,69 @@ export default function Reports() {
                 </div>
               ))}
             </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-sm">Top Arrears</h3>
+              <Badge variant="outline">{topArrearsUnits.length} units</Badge>
+            </div>
+            {topArrearsUnits.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No arrears in the selected period.</p>
+            ) : (
+              <div className="space-y-2">
+                {topArrearsUnits.map((u) => (
+                  <div key={u.id} className="rounded-xl border border-border/60 p-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{u.tenant_name || "Unassigned tenant"}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {u.property_name} | Unit {u.unit_number}
+                      </p>
+                    </div>
+                    <p className="text-sm font-black text-destructive">
+                      KES {Math.round(Number(u.balance || 0)).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-5">
+            <h3 className="font-bold text-sm mb-3">Document Library Guidance</h3>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p><span className="font-semibold text-foreground">Summary:</span> quick month-end KPI brief for internal review.</p>
+              <p><span className="font-semibold text-foreground">Statement:</span> detailed ledger-level evidence for accounting/audit trail.</p>
+              <p><span className="font-semibold text-foreground">Operations Pack:</span> rent roll + arrears + collections + expenses + risk queue.</p>
+              <p><span className="font-semibold text-foreground">Loan Pack:</span> lender-facing cashflow and repayment-capacity evidence.</p>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold">Expense Concentration</span>
+              <Badge variant="outline">
+                {topExpenseCategories.length} categories
+              </Badge>
+            </div>
+            {topExpenseCategories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No expenses recorded in this period.</p>
+            ) : (
+              <div className="space-y-2">
+                {topExpenseCategories.map((c) => {
+                  const share = totalExpensesAmount > 0 ? (c.amount / totalExpensesAmount) * 100 : 0;
+                  return (
+                    <div key={c.name} className="rounded-xl border border-border/60 p-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold">{c.name}</span>
+                        <span>KES {Math.round(c.amount).toLocaleString()}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1">{share.toFixed(1)}% of total expenses</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
 
           <Collapsible open={intelligenceOpen} onOpenChange={setIntelligenceOpen}>

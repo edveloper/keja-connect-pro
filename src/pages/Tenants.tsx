@@ -46,8 +46,15 @@ type TenantWithUnit = Tenant & {
   } | null;
 };
 
+function resolveStatusFromBalance(balance: number): "paid" | "partial" | "unpaid" | "overpaid" {
+  if (balance < 0) return "overpaid";
+  if (balance === 0) return "paid";
+  return "unpaid";
+}
+
 export default function Tenants() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [financeScope, setFinanceScope] = useState<"month" | "all">("month");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantWithUnit | null>(null);
@@ -57,7 +64,7 @@ export default function Tenants() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: tenants, isLoading } = useTenants();
-  const { data: dashboardData } = useDashboardData(null);
+  const { data: dashboardData } = useDashboardData(financeScope === "month" ? new Date() : null);
   const { data: riskSnapshots = [] } = useTenantRiskSnapshots(currentMonthKey);
   const createTenant = useCreateTenant();
   const updateTenant = useUpdateTenant();
@@ -132,6 +139,7 @@ export default function Tenants() {
   const tenantExportRows = useMemo<TenantExportRow[]>(() => {
     return (tenants ?? []).map((tenant) => {
       const finance = tenantFinanceById.get(tenant.id);
+      const balance = finance?.balance ?? 0;
       const risk = riskByTenant.get(tenant.id);
       return {
         tenant_name: tenant.name,
@@ -139,8 +147,8 @@ export default function Tenants() {
         property_name: tenant.units?.properties?.name ?? "Unassigned",
         unit_number: tenant.units?.unit_number ?? "-",
         rent_amount: tenant.rent_amount ?? 0,
-        balance: finance?.balance ?? 0,
-        payment_status: finance?.payment_status ?? "unpaid",
+        balance,
+        payment_status: finance?.payment_status ?? resolveStatusFromBalance(balance),
         risk_level: risk?.level ?? "low",
         risk_score: risk?.score ?? 0,
         lease_start: tenant.lease_start,
@@ -163,9 +171,35 @@ export default function Tenants() {
   }, [searchParams, tenants, setSearchParams]);
 
   return (
-    <PageContainer title="Tenants" subtitle="Directory & Payment Status">
+    <PageContainer
+      title="Tenants"
+      subtitle={financeScope === "month" ? "Directory & Payment Status (This Month)" : "Directory & Payment Status (All Time)"}
+    >
       <div className="surface-panel mb-6 p-3 sm:p-4">
         <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-center">
+            <div className="inline-flex rounded-lg border border-border bg-muted/20 p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={financeScope === "month" ? "default" : "ghost"}
+                className="h-8 px-3 text-xs"
+                onClick={() => setFinanceScope("month")}
+              >
+                This Month
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={financeScope === "all" ? "default" : "ghost"}
+                className="h-8 px-3 text-xs"
+                onClick={() => setFinanceScope("all")}
+              >
+                All Time
+              </Button>
+            </div>
+          </div>
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -294,7 +328,25 @@ export default function Tenants() {
               </div>
 
               {propertyTenants.map((tenant) => {
-                const balance = tenantFinanceById.get(tenant.id)?.balance ?? 0;
+                const finance = tenantFinanceById.get(tenant.id);
+                const balance = finance?.balance ?? 0;
+                const paymentStatus = finance?.payment_status ?? resolveStatusFromBalance(balance);
+                const statusLabel =
+                  paymentStatus === "overpaid"
+                    ? "Overpaid"
+                    : paymentStatus === "paid"
+                      ? "Paid"
+                      : paymentStatus === "partial"
+                        ? "Partial"
+                        : "Arrears";
+                const statusClassName =
+                  paymentStatus === "overpaid"
+                    ? "bg-blue-100 text-blue-700 border-blue-200"
+                    : paymentStatus === "paid"
+                      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                      : paymentStatus === "partial"
+                        ? "bg-amber-100 text-amber-700 border-amber-200"
+                        : "bg-red-100 text-red-700 border-red-200";
 
                 return (
                   <Card
@@ -320,6 +372,9 @@ export default function Tenants() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold">{tenant.name}</h3>
+                          <Badge className={cn("text-[10px] uppercase tracking-wide border", statusClassName)}>
+                            {statusLabel}
+                          </Badge>
                           {riskByTenant.get(tenant.id) && (
                             <Badge
                               variant={
@@ -337,6 +392,15 @@ export default function Tenants() {
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Unit {tenant.units?.unit_number} | {formatKenyanPhone(tenant.phone)}
+                        </div>
+                        <div className="text-xs mt-1">
+                          {balance > 0 ? (
+                            <span className="font-semibold text-destructive">Arrears: KES {balance.toLocaleString()}</span>
+                          ) : balance < 0 ? (
+                            <span className="font-semibold text-blue-700">Advance Credit: KES {Math.abs(balance).toLocaleString()}</span>
+                          ) : (
+                            <span className="font-semibold text-emerald-700">Up to date</span>
+                          )}
                         </div>
                       </div>
 

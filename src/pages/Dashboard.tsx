@@ -32,6 +32,7 @@ export default function Dashboard() {
   const migration = useAutoMigration();
 
   const { data, isLoading } = useDashboardData(selectedDate);
+  const { data: thisMonthData } = useDashboardData(new Date());
   const { data: totalExpenses, isLoading: expensesLoading } = useTotalExpenses(selectedDate);
   const riskMonthKey = selectedDate ? format(selectedDate, "yyyy-MM") : new Date().toISOString().slice(0, 7);
   const { summary: riskSummary } = useRiskSummary(riskMonthKey);
@@ -93,6 +94,18 @@ export default function Dashboard() {
         topOverdueTenantId: topOverdueTenant?.tenant_id || undefined,
       }),
     [collectionRate, data?.stats, pendingReminders, riskSummary.high, topOverdueTenant?.tenant_id]
+  );
+
+  const upToDateThisMonth = useMemo(
+    () =>
+      (thisMonthData?.units ?? []).filter(
+        (u) => !!u.tenant_id && (u.payment_status === "paid" || u.payment_status === "overpaid")
+      ).length,
+    [thisMonthData]
+  );
+  const occupiedThisMonth = useMemo(
+    () => (thisMonthData?.units ?? []).filter((u) => !!u.tenant_id).length,
+    [thisMonthData]
   );
 
   function openRecordPayment(unit: DashboardUnit) {
@@ -192,6 +205,16 @@ export default function Dashboard() {
                 value={formatKES(data?.stats.totalDeposits || 0)}
                 icon={ShieldCheck}
                 className="bg-blue-50/80 text-blue-900 border-blue-100 shadow-sm"
+                onClick={() => navigate("/tenants")}
+              />
+            </div>
+
+            <div className="col-span-2">
+              <StatsCard
+                label="Up to Date (This Month)"
+                value={`${upToDateThisMonth}/${occupiedThisMonth}`}
+                icon={Home}
+                variant={occupiedThisMonth > 0 && upToDateThisMonth === occupiedThisMonth ? "success" : "default"}
                 onClick={() => navigate("/tenants")}
               />
             </div>

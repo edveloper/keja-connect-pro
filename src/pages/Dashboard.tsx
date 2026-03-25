@@ -3,10 +3,8 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import UnitCard from "@/components/dashboard/UnitCard";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import RecordPaymentDialog from "@/components/tenants/RecordPaymentDialog";
-import { MigrationBanner } from "@/components/migration/MigrationBanner";
 import { useDashboardData } from "@/hooks/useDashboard";
 import { useTotalExpenses } from "@/hooks/useExpenses";
-import { useAutoMigration } from "@/hooks/useAutoMigration";
 import { useRiskSummary, useReminderQueue } from "@/hooks/useIntelligence";
 import type { DashboardUnit } from "@/hooks/useDashboard";
 import { formatKES } from "@/lib/number-formatter";
@@ -27,9 +25,6 @@ import { useNavigate } from "react-router-dom";
 export default function Dashboard() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  
-  // Auto-migration hook - runs once per user
-  const migration = useAutoMigration();
 
   const { data, isLoading } = useDashboardData(selectedDate);
   const { data: thisMonthData } = useDashboardData(new Date());
@@ -113,21 +108,16 @@ export default function Dashboard() {
     setDialogOpen(true);
   }
 
-  // Show loading state during migration
-  const isLoadingOrMigrating = isLoading || migration.isMigrating;
+  const isLoadingOrMigrating = isLoading;
 
   return (
     <PageContainer title="Dashboard" subtitle="Property Overview">
-      {/* Migration banner - shows during migration or if error */}
-      <MigrationBanner migration={migration} />
-
       {/* --- DATE SELECTOR --- */}
       <div className="surface-panel flex items-center justify-between mb-6 p-2">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setSelectedDate(prev => prev ? subMonths(prev, 1) : new Date())}
-          disabled={migration.isMigrating}
         >
           <ChevronLeft className="h-5 w-5 text-slate-400" />
         </Button>
@@ -139,8 +129,7 @@ export default function Dashboard() {
           </div>
           <button
             onClick={() => setSelectedDate(selectedDate ? null : new Date())}
-            disabled={migration.isMigrating}
-            className="text-[10px] text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline disabled:opacity-50"
+            className="text-[10px] text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline"
           >
             {selectedDate ? "Switch to All-Time" : "Back to Monthly View"}
           </button>
@@ -150,7 +139,6 @@ export default function Dashboard() {
           variant="ghost"
           size="icon"
           onClick={() => setSelectedDate(prev => prev ? addMonths(prev, 1) : new Date())}
-          disabled={migration.isMigrating}
         >
           <ChevronRight className="h-5 w-5 text-slate-400" />
         </Button>
@@ -270,7 +258,6 @@ export default function Dashboard() {
             <Collapsible open={occupiedOpen} onOpenChange={setOccupiedOpen}>
               <CollapsibleTrigger 
                 className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-slate-50 transition-colors"
-                disabled={migration.isMigrating}
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -295,7 +282,6 @@ export default function Dashboard() {
             <Collapsible open={vacantOpen} onOpenChange={setVacantOpen}>
               <CollapsibleTrigger 
                 className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-slate-50 transition-colors"
-                disabled={migration.isMigrating}
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-slate-100 text-slate-500">

@@ -77,8 +77,29 @@ export function useAutoMigration() {
         return;
       }
 
-      // If previous run failed, surface error and avoid infinite retry loops.
+      // If a previous run failed, verify whether migration is still actually needed
+      // before surfacing a stale banner. This clears one-time warning states after
+      // the user completes the migration manually.
       if (migrationRow?.status === "failed") {
+        const needsMigration = await checkIfMigrationNeeded(user.id);
+
+        if (!needsMigration) {
+          await upsertMigrationState(user.id, {
+            status: "completed",
+            last_error: null,
+            completed_at: new Date().toISOString(),
+          });
+
+          setState({
+            isChecking: false,
+            isMigrating: false,
+            needsMigration: false,
+            migrationComplete: true,
+            error: null,
+          });
+          return;
+        }
+
         setState({
           isChecking: false,
           isMigrating: false,
@@ -227,4 +248,3 @@ async function checkIfMigrationNeeded(userId: string): Promise<boolean> {
 
   return !charges || charges.length === 0;
 }
-

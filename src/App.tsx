@@ -11,6 +11,7 @@ import { currentMonthKey } from "@/lib/month";
 
 // Layout
 import { BottomNav } from "@/components/layout/BottomNav";
+import { InstallBanner } from "@/components/pwa/InstallBanner";
 
 // Pages (Public)
 import AuthPage from "./pages/Auth";
@@ -139,7 +140,12 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
 
-          {session && <BottomNav />}
+          {session && (
+            <>
+              <InstallBanner />
+              <BottomNav />
+            </>
+          )}
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

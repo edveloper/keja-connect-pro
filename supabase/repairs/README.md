@@ -9,6 +9,11 @@ Run them only after the three `20260817*` migrations have been applied.
 | Script | What it does | When you need it |
 | --- | --- | --- |
 | `01_shift_charge_months.sql` | Moves every existing `charge_month` and `applied_month` forward by one month | If your data was created before the F1 timezone fix — which is all data created by the app to date |
+| `02_remove_future_charges.sql` | Deletes rent charges dated after the current month | If a tenant statement shows a month that has not happened yet |
+
+> **Run `01` at most once.** The billing migration already backfills correct
+> months, so shifting again moves those rows into the future. If you see a
+> future month on a statement, that is what happened — run `02` to clear it.
 
 ## Do you need `01_shift_charge_months.sql`?
 

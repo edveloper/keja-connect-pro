@@ -138,7 +138,7 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
         if (!next) reset();
       }}
     >
-      <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto rounded-lg border border-border bg-card p-5 shadow-card">
+      <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold tracking-tight">Record payment</DialogTitle>
         </DialogHeader>

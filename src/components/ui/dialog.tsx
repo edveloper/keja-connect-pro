@@ -36,7 +36,23 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        cn(
+        // Base geometry. Three mobile problems are fixed here rather than in
+        // each dialog:
+        //
+        //  1. `w-full` left no side margin, so any child wider than the screen
+        //     pushed the whole dialog off the edge. A calc width keeps a gutter.
+        //  2. There was no max-height at all, so a long form simply ran off the
+        //     bottom of the screen with no way to scroll to the buttons.
+        //  3. `dvh` rather than `vh`: when a phone keyboard opens, the dynamic
+        //     viewport shrinks but `vh` does not, so a centred dialog put its
+        //     lower fields underneath the keyboard. `dvh` tracks the keyboard.
+        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-1.5rem)] max-w-lg",
+        "translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background",
+        "p-5 sm:p-6 shadow-lg duration-200",
+        "max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+      ),
         className,
       )}
       {...props}

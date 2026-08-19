@@ -193,8 +193,8 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
   };
 
   return (
-    <form onSubmit={(e) => handleSubmit(e, false)} className="flex flex-col h-full max-h-[85vh]">
-      <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+    <form onSubmit={(e) => handleSubmit(e, false)} className="flex flex-col">
+      <div className="space-y-4">
         <div className="space-y-4">
           <Label className="text-xs font-bold uppercase text-muted-foreground">Tenant details</Label>
 
@@ -339,7 +339,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
         </div>
       </div>
 
-      <div className="mt-auto border-t border-border/60 bg-background pt-4">
+      <div className="border-t border-border pt-4 mt-5">
         <div className="flex flex-col gap-2">
         {!tenant && (
           <Button

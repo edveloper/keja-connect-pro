@@ -167,57 +167,57 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm mx-4 max-h-[90vh] overflow-y-auto rounded-lg border border-border bg-card p-5 shadow-card">
+      <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle className="tracking-tight">{title}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="surface-panel space-y-2 p-3">
             <Label className="text-xs text-muted-foreground">Quick Formats</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <Button type="button" variant="outline" className="text-xs h-9 px-2" onClick={() => { setNumberingStyle("numbers"); setUnitCount("10"); }}>1, 2, 3...</Button>
-              <Button type="button" variant="outline" className="text-xs h-9 px-2" onClick={() => { setNumberingStyle("block_unit"); setBlockConfigs([{ block: "A", unitCount: 5 }, { block: "B", unitCount: 5 }]); }}>A1, B1...</Button>
-              <Button type="button" variant="outline" className="text-xs h-9 px-2" onClick={() => { setNumberingStyle("floor_unit"); setUnitCount("8"); }}>1A, 2A...</Button>
+            <div className="grid grid-cols-3 gap-2 min-w-0">
+              <Button type="button" variant="outline" className="text-xs h-9 px-1 min-w-0" onClick={() => { setNumberingStyle("numbers"); setUnitCount("10"); }}>1, 2, 3...</Button>
+              <Button type="button" variant="outline" className="text-xs h-9 px-1 min-w-0" onClick={() => { setNumberingStyle("block_unit"); setBlockConfigs([{ block: "A", unitCount: 5 }, { block: "B", unitCount: 5 }]); }}>A1, B1...</Button>
+              <Button type="button" variant="outline" className="text-xs h-9 px-1 min-w-0" onClick={() => { setNumberingStyle("floor_unit"); setUnitCount("8"); }}>1A, 2A...</Button>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="name">Property Name</Label>
+            <Label htmlFor="name">Property name</Label>
             <Input id="name" className="h-11" placeholder="e.g. Blue Sky Apartments" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="street_address">Street / Plot Address</Label>
+            <Label htmlFor="street_address">Street or plot</Label>
             <Input id="street_address" className="h-11" placeholder="e.g. Plot 14, Muthangari Road" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2 min-w-0">
               <Label htmlFor="neighborhood">Neighborhood</Label>
               <Input id="neighborhood" className="h-11" placeholder="e.g. Westlands" value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="town_city">Town / City</Label>
+            <div className="space-y-2 min-w-0">
+              <Label htmlFor="town_city">Town or city</Label>
               <Input id="town_city" className="h-11" placeholder="e.g. Nairobi" value={townCity} onChange={(e) => setTownCity(e.target.value)} />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2 min-w-0">
               <Label htmlFor="county">County</Label>
-              <Input id="county" className="h-11" placeholder="e.g. Nairobi County" value={county} onChange={(e) => setCounty(e.target.value)} />
+              <Input id="county" className="h-11" placeholder="e.g. Nairobi" value={county} onChange={(e) => setCounty(e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="postal_code">Postal Code</Label>
+            <div className="space-y-2 min-w-0">
+              <Label htmlFor="postal_code">Postal code</Label>
               <Input id="postal_code" className="h-11" placeholder="e.g. 00100" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="landmark">Landmark (Optional)</Label>
+            <Label htmlFor="landmark">Landmark</Label>
             <Input id="landmark" className="h-11" placeholder="e.g. Near ABC Mall" value={landmark} onChange={(e) => setLandmark(e.target.value)} />
           </div>
 
           <div className="space-y-2">
-            <Label>Style</Label>
+            <Label>How units are numbered</Label>
             <Select value={numberingStyle} onValueChange={(v) => setNumberingStyle(v as NumberingStyle)}>
               <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -233,23 +233,23 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
           {!isEditMode && numberingStyle === "block_unit" ? (
             <div className="surface-panel space-y-2 p-3">
               {blockConfigs.map((c, i) => (
-                <div key={i} className="flex gap-2 mb-2">
+                <div key={i} className="flex gap-2 mb-2 min-w-0">
                   <Input className="w-14 h-9" value={c.block} onChange={(e) => { const u = [...blockConfigs]; u[i].block = e.target.value.toUpperCase(); setBlockConfigs(u); }} maxLength={1} />
-                  <Input type="number" className="h-9" value={c.unitCount || ""} onChange={(e) => { const u = [...blockConfigs]; u[i].unitCount = parseInt(e.target.value, 10) || 0; setBlockConfigs(u); }} />
+                  <Input type="number" className="h-9 min-w-0" value={c.unitCount || ""} onChange={(e) => { const u = [...blockConfigs]; u[i].unitCount = parseInt(e.target.value, 10) || 0; setBlockConfigs(u); }} />
                 </div>
               ))}
-              <Button type="button" variant="link" className="text-xs px-2 h-9" onClick={() => setBlockConfigs([...blockConfigs, { block: "C", unitCount: 5 }])}>+ Add Block</Button>
+              <Button type="button" variant="link" className="text-xs px-2 h-9" onClick={() => setBlockConfigs([...blockConfigs, { block: "C", unitCount: 5 }])}>Add another block</Button>
             </div>
           ) : !isEditMode ? (
             <div className="space-y-2">
-              <Label>Number of Units</Label>
+              <Label>How many units</Label>
               <Input className="h-11" type="number" value={unitCount} onChange={(e) => setUnitCount(e.target.value)} placeholder="10" />
             </div>
           ) : null}
 
           {isEditMode && (
             <div className="text-xs p-2 bg-accent/50 rounded-md border border-border">
-              <span className="text-muted-foreground">Unit creation settings are disabled in edit mode. Use "Add unit" from the property card.</span>
+              <span className="text-muted-foreground">Unit numbering only applies when creating a property. Add more units from the property card.</span>
             </div>
           )}
 
@@ -260,7 +260,7 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={isLoading || !name.trim()}>Save Property</Button>
+          <Button type="submit" className="w-full" disabled={isLoading || !name.trim()}>Save property</Button>
         </form>
       </DialogContent>
     </Dialog>

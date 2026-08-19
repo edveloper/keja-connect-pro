@@ -95,7 +95,7 @@ export function ExpenseForm({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Optimized padding for mobile screens */}
-      <DialogContent className="max-w-md w-[95vw] rounded-lg p-4 sm:p-6 max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader className="pb-2">
           <DialogTitle className="text-xl">Record Expense</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">

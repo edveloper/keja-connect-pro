@@ -83,7 +83,7 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{tenant.name}</DialogTitle>
             <DialogDescription>
@@ -101,30 +101,30 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
           ) : (
             <div className="space-y-4">
               {/* Account position */}
-              <div className="grid grid-cols-3 gap-px rounded-lg border border-border overflow-hidden bg-border">
-                <div className="bg-card p-3">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+              <div className="grid grid-cols-3 gap-px rounded-lg border border-border overflow-hidden bg-border min-w-0">
+                <div className="bg-card p-3 min-w-0">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold truncate">
                     Billed
                   </p>
-                  <p className="text-sm font-black tabular-nums mt-1">
+                  <p className="text-sm font-bold tabular-nums mt-1 truncate">
                     {formatKES(ledger?.totalCharged ?? 0)}
                   </p>
                 </div>
-                <div className="bg-card p-3">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                <div className="bg-card p-3 min-w-0">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold truncate">
                     Paid
                   </p>
-                  <p className="text-sm font-black tabular-nums mt-1">
+                  <p className="text-sm font-bold tabular-nums mt-1 truncate">
                     {formatKES(ledger?.totalApplied ?? 0)}
                   </p>
                 </div>
-                <div className="bg-card p-3">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                <div className="bg-card p-3 min-w-0">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold truncate">
                     {owes ? "Owes" : balance < 0 ? "In credit" : "Settled"}
                   </p>
                   <p
                     className={cn(
-                      "text-sm font-black tabular-nums mt-1",
+                      "text-sm font-bold tabular-nums mt-1 truncate",
                       owes ? "text-destructive" : balance < 0 ? "text-success" : ""
                     )}
                   >
@@ -180,29 +180,24 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                       Nothing billed yet.
                     </p>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[26rem]">
-                        <thead>
-                          <tr className="text-xs uppercase tracking-wider text-muted-foreground">
-                            <th className="text-left font-bold py-2">Month</th>
-                            <th className="text-right font-bold py-2">Billed</th>
-                            <th className="text-right font-bold py-2">Paid</th>
-                            <th className="text-right font-bold py-2">Balance</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {monthPage.visible.map((month) => (
-                            <tr key={month.month} className="border-t border-border/60">
-                              <td className="py-2 font-medium">{month.label}</td>
-                              <td className="py-2 text-right tabular-nums">
-                                {month.charged.toLocaleString("en-KE")}
-                              </td>
-                              <td className="py-2 text-right tabular-nums">
-                                {month.applied.toLocaleString("en-KE")}
-                              </td>
-                              <td
+                    <>
+                      {/* Rows rather than a four-column table.
+                       *
+                       * The table carried `min-w-[26rem]`, so on a phone the
+                       * statement scrolled sideways and the balance — the column
+                       * that matters — was the one pushed off the edge. Here the
+                       * running balance sits next to the month, with the detail
+                       * on a second line, and nothing overflows at any width. */}
+                      <ul className="divide-y divide-border">
+                        {monthPage.visible.map((month) => (
+                          <li key={month.month} className="py-3">
+                            <div className="flex items-baseline justify-between gap-3">
+                              <span className="text-sm font-medium min-w-0 truncate">
+                                {month.label}
+                              </span>
+                              <span
                                 className={cn(
-                                  "py-2 text-right tabular-nums font-semibold",
+                                  "text-sm font-semibold tabular-nums shrink-0",
                                   month.balance > 0
                                     ? "text-destructive"
                                     : month.balance < 0
@@ -210,12 +205,20 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                                       : "text-muted-foreground"
                                 )}
                               >
-                                {month.balance.toLocaleString("en-KE")}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                                {month.balance > 0
+                                  ? formatKES(month.balance)
+                                  : month.balance < 0
+                                    ? `${formatKES(Math.abs(month.balance))} ahead`
+                                    : "Settled"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
+                              billed {month.charged.toLocaleString("en-KE")} · paid{" "}
+                              {month.applied.toLocaleString("en-KE")}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
 
                       {monthPage.hasMore && (
                         <div className="mt-3">
@@ -227,10 +230,11 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                         </div>
                       )}
 
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Balance is the running total carried forward, not the month on its own.
+                      <p className="text-xs text-muted-foreground mt-3">
+                        The figure on the right is the running balance carried forward, not
+                        that month on its own.
                       </p>
-                    </div>
+                    </>
                   )}
                 </TabsContent>
 

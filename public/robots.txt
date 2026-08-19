@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://keja-connect.vercel.app/sitemap.xml
+# Signed-in areas render nothing useful to a crawler and should not be indexed.
+Disallow: /tenants
+Disallow: /properties
+Disallow: /expenses
+Disallow: /reports
+Disallow: /settings
+
+Sitemap: https://rentkonnect.co.ke/sitemap.xml

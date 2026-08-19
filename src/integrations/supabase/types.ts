@@ -421,6 +421,7 @@ export type Database = {
           opening_balance: number | null
           phone: string
           rent_amount: number
+          billing_starts_on: string | null
           moved_out_on: string | null
           security_deposit: number | null
           status: string
@@ -438,6 +439,7 @@ export type Database = {
           opening_balance?: number | null
           phone: string
           rent_amount?: number
+          billing_starts_on?: string | null
           moved_out_on?: string | null
           security_deposit?: number | null
           status?: string
@@ -455,6 +457,7 @@ export type Database = {
           opening_balance?: number | null
           phone?: string
           rent_amount?: number
+          billing_starts_on?: string | null
           moved_out_on?: string | null
           security_deposit?: number | null
           status?: string

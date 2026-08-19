@@ -4,12 +4,14 @@ Scripts in this folder are **not** migrations. `supabase db push` ignores them.
 They rewrite existing financial records, so each one is run deliberately, once,
 after you have read what it does and looked at its preview output.
 
-Run them only after the three `20260817*` migrations have been applied.
+Run them only after the `20260817*` migrations have been applied. `03` also
+needs `20260819120000_billing_start_date.sql`.
 
 | Script | What it does | When you need it |
 | --- | --- | --- |
 | `01_shift_charge_months.sql` | Moves every existing `charge_month` and `applied_month` forward by one month | If your data was created before the F1 timezone fix — which is all data created by the app to date |
 | `02_remove_future_charges.sql` | Deletes rent charges dated after the current month | If a tenant statement shows a month that has not happened yet |
+| `03_reset_financials_for_user.sql` | Clears one landlord's charges, payments and balances, keeping properties, units, tenants and expenses | If a landlord wants to restart their books without losing their setup |
 
 > **Run `01` at most once.** The billing migration already backfills correct
 > months, so shifting again moves those rows into the future. If you see a

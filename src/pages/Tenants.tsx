@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { currentMonthKey } from "@/lib/month";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,10 +24,39 @@ import {
 import { TenantForm } from "@/components/tenants/TenantForm";
 import type { TenantFormPayload } from "@/components/tenants/TenantForm";
 import RecordPaymentDialog from "@/components/tenants/RecordPaymentDialog";
-import { useTenants, useCreateTenant, useDeleteTenant, useUpdateTenant } from "@/hooks/useTenants";
+import {
+  useTenants,
+  useCreateTenant,
+  useDeleteTenant,
+  useUpdateTenant,
+  useArchiveTenant,
+} from "@/hooks/useTenants";
+import TenantLedgerDialog from "@/components/tenants/TenantLedgerDialog";
+import MpesaReconcileDialog from "@/components/payments/MpesaReconcileDialog";
+import { formatKES } from "@/lib/number-formatter";
+import { getSupabaseErrorMessage } from "@/lib/supabase-errors";
 import { useDashboardData } from "@/hooks/useDashboard";
 import { formatKenyanPhone } from "@/lib/phone-validation";
-import { Plus, Building2, Search, Trash2, Pencil, Download } from "lucide-react";
+import {
+  Plus,
+  Building2,
+  Search,
+  Trash2,
+  Pencil,
+  Download,
+  Receipt,
+  LogOut,
+  Smartphone,
+  Banknote,
+  MoreVertical,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -46,12 +76,6 @@ type TenantWithUnit = Tenant & {
   } | null;
 };
 
-function resolveStatusFromBalance(balance: number): "paid" | "partial" | "unpaid" | "overpaid" {
-  if (balance < 0) return "overpaid";
-  if (balance === 0) return "paid";
-  return "unpaid";
-}
-
 export default function Tenants() {
   const [searchTerm, setSearchTerm] = useState("");
   const [financeScope, setFinanceScope] = useState<"month" | "all">("month");
@@ -60,15 +84,19 @@ export default function Tenants() {
   const [editingTenant, setEditingTenant] = useState<TenantWithUnit | null>(null);
   const [payingTenant, setPayingTenant] = useState<TenantWithUnit | null>(null);
   const [tenantToDelete, setTenantToDelete] = useState<TenantWithUnit | null>(null);
-  const currentMonthKey = new Date().toISOString().slice(0, 7);
+  const [tenantToArchive, setTenantToArchive] = useState<TenantWithUnit | null>(null);
+  const [ledgerTenant, setLedgerTenant] = useState<TenantWithUnit | null>(null);
+  const [isReconcileOpen, setIsReconcileOpen] = useState(false);
+  const monthKey = currentMonthKey();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: tenants, isLoading } = useTenants();
   const { data: dashboardData } = useDashboardData(financeScope === "month" ? new Date() : null);
-  const { data: riskSnapshots = [] } = useTenantRiskSnapshots(currentMonthKey);
+  const { data: riskSnapshots = [] } = useTenantRiskSnapshots(monthKey);
   const createTenant = useCreateTenant();
   const updateTenant = useUpdateTenant();
   const deleteTenant = useDeleteTenant();
+  const archiveTenant = useArchiveTenant();
 
   const tenantFinanceById = useMemo(() => {
     const map = new Map<
@@ -148,7 +176,7 @@ export default function Tenants() {
         unit_number: tenant.units?.unit_number ?? "-",
         rent_amount: tenant.rent_amount ?? 0,
         balance,
-        payment_status: finance?.payment_status ?? resolveStatusFromBalance(balance),
+        payment_status: finance?.payment_status ?? "paid",
         risk_level: risk?.level ?? "low",
         risk_score: risk?.score ?? 0,
         lease_start: tenant.lease_start,
@@ -161,8 +189,7 @@ export default function Tenants() {
     if (!tenantId || !tenants?.length) return;
     const found = tenants.find((t) => t.id === tenantId);
     if (!found) return;
-    setEditingTenant(found);
-    setIsEditOpen(true);
+    setLedgerTenant(found);
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
       p.delete("tenantId");
@@ -214,13 +241,22 @@ export default function Tenants() {
             <Button
               variant="outline"
               className="h-12 w-full sm:w-auto"
+              onClick={() => setIsReconcileOpen(true)}
+            >
+              <Smartphone className="h-4 w-4 mr-2" />
+              Paste M-Pesa
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-12 w-full sm:w-auto"
               onClick={async () => {
                 try {
                   await exportTenantsListExcel(tenantExportRows);
                 } catch (error) {
                   toast({
                     title: "Export failed",
-                    description: error instanceof Error ? error.message : "Failed to export tenant list",
+                    description: getSupabaseErrorMessage(error),
                     variant: "destructive",
                   });
                 }
@@ -330,7 +366,7 @@ export default function Tenants() {
               {propertyTenants.map((tenant) => {
                 const finance = tenantFinanceById.get(tenant.id);
                 const balance = finance?.balance ?? 0;
-                const paymentStatus = finance?.payment_status ?? resolveStatusFromBalance(balance);
+                const paymentStatus = finance?.payment_status ?? "paid";
                 const statusLabel =
                   paymentStatus === "overpaid"
                     ? "Overpaid"
@@ -341,7 +377,7 @@ export default function Tenants() {
                         : "Arrears";
                 const statusClassName =
                   paymentStatus === "overpaid"
-                    ? "bg-blue-100 text-blue-700 border-blue-200"
+                    ? "bg-accent text-accent-foreground border-accent"
                     : paymentStatus === "paid"
                       ? "bg-emerald-100 text-emerald-700 border-emerald-200"
                       : paymentStatus === "partial"
@@ -351,11 +387,17 @@ export default function Tenants() {
                 return (
                   <Card
                     key={tenant.id}
-                    className="p-4 relative elevate cursor-pointer"
-                    onClick={() => {
-                      setEditingTenant(tenant);
-                      setIsEditOpen(true);
+                    className="p-4 relative elevate cursor-pointer overflow-hidden"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setLedgerTenant(tenant)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setLedgerTenant(tenant);
+                      }
                     }}
+                    aria-label={`Open ${tenant.name}'s statement`}
                   >
                     <div
                       className={cn(
@@ -364,82 +406,114 @@ export default function Tenants() {
                           ? "bg-red-500"
                           : balance < 0
                             ? "bg-emerald-500"
-                            : "bg-slate-200"
+                            : "bg-muted"
                       )}
                     />
 
-                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold">{tenant.name}</h3>
-                          <Badge className={cn("text-[10px] uppercase tracking-wide border", statusClassName)}>
+                    <div className="flex items-start justify-between gap-3">
+                      {/* min-w-0 lets this column shrink. Without it the row
+                          could not compress and pushed the card wider than the
+                          viewport, scrolling the whole page sideways. */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <h3 className="font-bold truncate max-w-full">{tenant.name}</h3>
+                          <Badge className={cn("text-[10px] uppercase tracking-wide border shrink-0", statusClassName)}>
                             {statusLabel}
                           </Badge>
-                          {riskByTenant.get(tenant.id) && (
-                            <Badge
-                              variant={
-                                riskByTenant.get(tenant.id)?.level === "high"
-                                  ? "destructive"
-                                  : riskByTenant.get(tenant.id)?.level === "medium"
-                                    ? "secondary"
-                                    : "outline"
-                              }
-                              className="text-[10px] uppercase tracking-wide"
-                            >
-                              {riskByTenant.get(tenant.id)?.level} risk
+                          {riskByTenant.get(tenant.id)?.level === "high" && (
+                            <Badge variant="destructive" className="text-[10px] uppercase tracking-wide shrink-0">
+                              High risk
                             </Badge>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground truncate">
                           Unit {tenant.units?.unit_number} | {formatKenyanPhone(tenant.phone)}
                         </div>
-                        <div className="text-xs mt-1">
+                        <div className="text-xs mt-1 truncate">
                           {balance > 0 ? (
-                            <span className="font-semibold text-destructive">Arrears: KES {balance.toLocaleString()}</span>
+                            <span className="font-semibold text-destructive">
+                              Owes {formatKES(balance)}
+                            </span>
                           ) : balance < 0 ? (
-                            <span className="font-semibold text-blue-700">Advance Credit: KES {Math.abs(balance).toLocaleString()}</span>
+                            <span className="font-semibold text-primary">
+                              In credit {formatKES(Math.abs(balance))}
+                            </span>
                           ) : (
                             <span className="font-semibold text-emerald-700">Up to date</span>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingTenant(tenant);
-                            setIsEditOpen(true);
-                          }}
-                          aria-label={`Edit ${tenant.name}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                      {/* One primary action plus a menu. Five side-by-side
+                          buttons did not fit on a phone and gave no labels. */}
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <Button
                           size="sm"
-                          className="h-8 px-2 text-xs sm:text-sm"
+                          className="h-9"
                           onClick={(e) => {
                             e.stopPropagation();
                             setPayingTenant(tenant);
                           }}
                         >
-                          Record Payment
+                          <Banknote className="h-4 w-4 sm:mr-1.5" />
+                          <span className="hidden sm:inline">Record Payment</span>
+                          <span className="sr-only sm:hidden">Record payment for {tenant.name}</span>
                         </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-slate-400 hover:text-destructive hover:bg-destructive/10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setTenantToDelete(tenant);
-                          }}
-                          aria-label={`Delete ${tenant.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-9 w-9"
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label={`More actions for ${tenant.name}`}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLedgerTenant(tenant);
+                              }}
+                            >
+                              <Receipt className="mr-2 h-4 w-4" />
+                              View statement
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingTenant(tenant);
+                                setIsEditOpen(true);
+                              }}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTenantToArchive(tenant);
+                              }}
+                            >
+                              <LogOut className="mr-2 h-4 w-4" />
+                              Move out
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTenantToDelete(tenant);
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete permanently
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </Card>
@@ -458,14 +532,18 @@ export default function Tenants() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete tenant?</AlertDialogTitle>
+            <AlertDialogTitle>Delete tenant permanently?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove {tenantToDelete?.name ?? "this tenant"} and related payment records.
+              This erases {tenantToDelete?.name ?? "this tenant"} along with every charge and
+              payment on their record, which will change the totals in months you have already
+              closed. If they are moving out, use Move Out instead — it keeps their history and
+              frees the unit.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (!tenantToDelete) return;
                 deleteTenant.mutate(tenantToDelete.id, {
@@ -473,11 +551,73 @@ export default function Tenants() {
                 });
               }}
             >
-              Delete
+              Delete permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={!!tenantToArchive}
+        onOpenChange={(open) => {
+          if (!open) setTenantToArchive(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move {tenantToArchive?.name ?? "this tenant"} out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Their payment history stays on record and Unit{" "}
+              {tenantToArchive?.units?.unit_number ?? ""} becomes available again. They will stop
+              being billed from next month.
+              {(() => {
+                const outstanding = tenantToArchive
+                  ? tenantFinanceById.get(tenantToArchive.id)?.balance ?? 0
+                  : 0;
+                if (outstanding > 0) {
+                  return ` They still owe ${formatKES(outstanding)} — settle or write this off first if you need the books clean.`;
+                }
+                if (tenantToArchive?.security_deposit) {
+                  return ` Remember to return or offset their ${formatKES(tenantToArchive.security_deposit)} deposit.`;
+                }
+                return "";
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!tenantToArchive) return;
+                archiveTenant.mutate(
+                  { id: tenantToArchive.id },
+                  { onSettled: () => setTenantToArchive(null) }
+                );
+              }}
+            >
+              Move out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <TenantLedgerDialog
+        open={Boolean(ledgerTenant)}
+        onOpenChange={(open) => !open && setLedgerTenant(null)}
+        tenant={
+          ledgerTenant
+            ? {
+                id: ledgerTenant.id,
+                name: ledgerTenant.name,
+                phone: ledgerTenant.phone,
+                unitNumber: ledgerTenant.units?.unit_number ?? null,
+                propertyName: ledgerTenant.units?.properties?.name ?? null,
+              }
+            : null
+        }
+      />
+
+      <MpesaReconcileDialog open={isReconcileOpen} onOpenChange={setIsReconcileOpen} />
     </PageContainer>
   );
 }

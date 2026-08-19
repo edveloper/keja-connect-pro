@@ -1,4 +1,11 @@
 import { useState, useMemo } from "react";
+import { currentMonthKey, toDateKey, toMonthKey } from "@/lib/month";
+import { MonthSelector } from "@/components/layout/MonthSelector";
+import { formatCompact, formatKES, getResponsiveFontClass } from "@/lib/number-formatter";
+import { buildMonthlySummary } from "@/lib/monthly-summary";
+import { buildArrearsReminder, whatsappLink } from "@/lib/reminders";
+import { useLandlordSettings } from "@/hooks/useLandlordSettings";
+import { useAnnualStatement } from "@/hooks/useAnnualStatement";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Card } from "@/components/ui/card";
 import { useDashboardData } from "@/hooks/useDashboard";
@@ -9,11 +16,6 @@ import {
 } from "@/hooks/useExpenses";
 import { usePayments } from "@/hooks/usePayments";
 import {
-  useReportNarrative,
-  useGenerateReportNarrative,
-  useAiServiceHealth,
-} from "@/hooks/useReportNarrative";
-import {
   useRiskSummary,
   useReminderQueue,
   useRunTenantRiskScoring,
@@ -21,28 +23,17 @@ import {
   useUpdateReminderAction,
   useTenantRiskSnapshots,
 } from "@/hooks/useIntelligence";
-import {
-  Calendar,
-  Receipt,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  Download,
-  Sparkles,
-  Wifi,
-  WifiOff,
-  RotateCw,
-  AlertTriangle,
-} from "lucide-react";
+import { Receipt, ChevronDown, Download, Sparkles, MessageCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { format, addMonths, subMonths } from "date-fns";
+import { format, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { getSupabaseErrorMessage } from "@/lib/supabase-errors";
 import { buildAssistantQueue } from "@/lib/assistantQueue";
 import { AssistantPanel } from "@/components/intelligence/AssistantPanel";
 import {
@@ -64,13 +55,9 @@ import {
 import { exportFinancialSummaryExcel } from "@/utils/exports/exportFinancialSummary";
 import { exportFinancialStatementExcel } from "@/utils/exports/exportFinancialStatement";
 import {
-  exportLandlordOperationsPackExcel,
-  exportLoanApplicationPackExcel,
-  exportTenantLedgerExcel,
-  exportPropertyPerformancePackExcel,
-  exportMasterBusinessPackExcel,
-  printLoanPackLayout,
-  printMasterPackLayout,
+  exportOperationsPack,
+  exportLenderPack,
+  printLenderPack,
 } from "@/utils/exports/exportLandlordDocuments";
 
 export default function Reports() {
@@ -79,9 +66,8 @@ export default function Reports() {
   const [exportsOpen, setExportsOpen] = useState(false);
   const navigate = useNavigate();
 
-  const monthKey = selectedDate ? format(selectedDate, "yyyy-MM") : null;
-  const narrativeMonthKey = monthKey ?? "all-time";
-  const riskMonthKey = selectedDate ? format(selectedDate, "yyyy-MM") : new Date().toISOString().slice(0, 7);
+  const monthKey = selectedDate ? toMonthKey(selectedDate) : null;
+  const riskMonthKey = selectedDate ? toMonthKey(selectedDate) : currentMonthKey();
 
   const dateLabel = selectedDate
     ? format(selectedDate, "MMMM yyyy")
@@ -94,7 +80,7 @@ export default function Reports() {
 
   const { data: totalExpenses, isLoading: expensesLoading } =
     useTotalExpenses(monthKey);
-  const previousMonthKey = previousDate ? format(previousDate, "yyyy-MM") : null;
+  const previousMonthKey = previousDate ? toMonthKey(previousDate) : null;
   const { data: previousTotalExpenses } = useTotalExpenses(previousMonthKey);
 
   const { data: expenses } = useExpenses(monthKey);
@@ -106,10 +92,10 @@ export default function Reports() {
   const runRiskScan = useRunTenantRiskScoring();
   const enqueueReminders = useEnqueueRiskReminders();
   const updateReminderAction = useUpdateReminderAction();
+  const { data: landlordSettings } = useLandlordSettings();
+  const { data: annual } = useAnnualStatement(12);
 
-  /** ----------------------------
-   *  FILTERED PAYMENTS (MONTH-AWARE)
-   *  ---------------------------- */
+  // Payments whose stated rent month falls in the selected period.
   const filteredPayments = useMemo(() => {
     if (!paymentsData) return [];
 
@@ -120,17 +106,32 @@ export default function Reports() {
     );
   }, [paymentsData, monthKey]);
 
-  /** ----------------------------
-   *  Financial Math (FINAL LOGIC)
-   *  ---------------------------- */
+  /**
+   * Two different questions, kept deliberately separate:
+   *
+   *   billedAmount / appliedAmount — the accrual view. What was charged for
+   *     this period and how much has been applied against it. `appliedAmount`
+   *     is NOT the cash that arrived this month: a payment clearing June's
+   *     arrears in August counts towards June.
+   *
+   *   cashReceived — the cash view. Money that actually landed in the period.
+   *     This is what net income is built from, because expenses are recorded
+   *     on the date they were paid, and subtracting cash-dated costs from
+   *     accrual-dated revenue gives a figure that means nothing.
+   */
   const billedAmount = dashboardData?.stats?.totalCharges ?? 0;
-  const allocatedAmount = dashboardData?.stats?.totalAllocated ?? 0;
-  const totalCollected = allocatedAmount;
+  const appliedAmount = dashboardData?.stats?.totalAllocated ?? 0;
+
+  const cashReceived = useMemo(
+    () => filteredPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
+    [filteredPayments]
+  );
 
   const totalExpensesAmount = totalExpenses ?? 0;
-  const netIncome = totalCollected - totalExpensesAmount;
+  const netIncome = cashReceived - totalExpensesAmount;
   const isProfit = netIncome >= 0;
   const outstandingBalance = dashboardData?.stats?.totalBalance ?? 0;
+  const totalCredit = dashboardData?.stats?.totalCredit ?? 0;
   const occupiedUnits = dashboardData?.stats?.occupiedUnits ?? 0;
   const totalUnits = dashboardData?.stats?.totalUnits ?? 0;
   const occupancyRate = totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0;
@@ -144,9 +145,18 @@ export default function Reports() {
     );
   }, [dashboardData]);
 
-  const collectionRateBase = monthKey ? expectedRent : billedAmount;
-  const collectionRate =
-    collectionRateBase > 0 ? (totalCollected / collectionRateBase) * 100 : 0;
+  // Collection efficiency is applied-against-billed in every view. It used to
+  // switch denominator between the monthly and all-time views, so the same
+  // label meant two different things.
+  const collectionRate = billedAmount > 0 ? (appliedAmount / billedAmount) * 100 : 0;
+
+  // Kept for the exports, which report cash collections.
+  const totalCollected = cashReceived;
+
+  const tenantsInArrears = useMemo(
+    () => (dashboardData?.units ?? []).filter((u) => u.tenant_id && u.balance > 0).length,
+    [dashboardData]
+  );
 
   const expensesByCategory = useMemo(() => {
     return (
@@ -161,18 +171,73 @@ export default function Reports() {
   }, [expenses, categories]);
 
   const isLoading = dashboardLoading || expensesLoading;
-  const { data: narrative, isLoading: narrativeLoading } = useReportNarrative(narrativeMonthKey);
-  const generateNarrative = useGenerateReportNarrative();
-  const {
-    data: aiHealth,
-    isLoading: aiHealthLoading,
-    isFetching: aiHealthChecking,
-    refetch: refetchAiHealth,
-  } = useAiServiceHealth();
 
-  /** ----------------------------
-   *  EXPORT HANDLERS
-   *  ---------------------------- */
+  const handleExportOperations = async () => {
+    try {
+      await exportOperationsPack({
+        monthKey,
+        periodLabel: dateLabel,
+        businessName: landlordSettings?.businessName || null,
+        cashReceived,
+        billed: billedAmount,
+        applied: appliedAmount,
+        totalExpenses: totalExpensesAmount,
+        netIncome,
+        collectionRate,
+        occupancyRate,
+        outstandingBalance,
+        units: dashboardData?.units ?? [],
+        payments: filteredPayments,
+        expenses: expenses ?? [],
+        topRiskTenants,
+        reminders: reminderQueue,
+        tenantNames: Object.fromEntries(
+          [...tenantById.entries()].map(([id, t]) => [id, t.name])
+        ),
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: getSupabaseErrorMessage(error),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportLender = async () => {
+    if (!annual) return;
+    try {
+      await exportLenderPack({
+        businessName: landlordSettings?.businessName || null,
+        ...annual,
+        units: dashboardData?.units ?? [],
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: getSupabaseErrorMessage(error),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePrintLender = async () => {
+    if (!annual) return;
+    try {
+      await printLenderPack({
+        businessName: landlordSettings?.businessName || null,
+        ...annual,
+        units: dashboardData?.units ?? [],
+      });
+    } catch (error) {
+      toast({
+        title: "Print failed",
+        description: getSupabaseErrorMessage(error),
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleExportSummary = async () => {
     try {
       await exportFinancialSummaryExcel({
@@ -192,10 +257,9 @@ export default function Reports() {
         },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to export summary";
       toast({
         title: "Export failed",
-        description: message,
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -217,175 +281,14 @@ export default function Reports() {
         },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to export statement";
       toast({
         title: "Export failed",
-        description: message,
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     }
   };
 
-  const handleExportOperationsPack = async () => {
-    try {
-      await exportLandlordOperationsPackExcel({
-        monthKey,
-        totalCollected,
-        totalExpenses: totalExpensesAmount,
-        netIncome,
-        collectionRate,
-        occupancyRate,
-        outstandingBalance,
-        expectedRent,
-        units: dashboardData?.units ?? [],
-        payments: filteredPayments,
-        expenses: expenses ?? [],
-        topRiskTenants,
-        reminders: reminderQueue,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to export operations pack";
-      toast({ title: "Export failed", description: message, variant: "destructive" });
-    }
-  };
-
-  const handleExportLoanPack = async () => {
-    try {
-      await exportLoanApplicationPackExcel({
-        monthKey,
-        totalCollected,
-        totalExpenses: totalExpensesAmount,
-        netIncome,
-        collectionRate,
-        occupancyRate,
-        outstandingBalance,
-        expectedRent,
-        units: dashboardData?.units ?? [],
-        payments: filteredPayments,
-        expenses: expenses ?? [],
-        topRiskTenants,
-        reminders: reminderQueue,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to export loan pack";
-      toast({ title: "Export failed", description: message, variant: "destructive" });
-    }
-  };
-
-  const handleExportTenantLedger = async () => {
-    try {
-      await exportTenantLedgerExcel({
-        monthKey,
-        totalCollected,
-        totalExpenses: totalExpensesAmount,
-        netIncome,
-        collectionRate,
-        occupancyRate,
-        outstandingBalance,
-        expectedRent,
-        units: dashboardData?.units ?? [],
-        payments: filteredPayments,
-        expenses: expenses ?? [],
-        topRiskTenants,
-        reminders: reminderQueue,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to export tenant ledger";
-      toast({ title: "Export failed", description: message, variant: "destructive" });
-    }
-  };
-
-  const handleExportPropertyPerformance = async () => {
-    try {
-      await exportPropertyPerformancePackExcel({
-        monthKey,
-        totalCollected,
-        totalExpenses: totalExpensesAmount,
-        netIncome,
-        collectionRate,
-        occupancyRate,
-        outstandingBalance,
-        expectedRent,
-        units: dashboardData?.units ?? [],
-        payments: filteredPayments,
-        expenses: expenses ?? [],
-        topRiskTenants,
-        reminders: reminderQueue,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to export property performance pack";
-      toast({ title: "Export failed", description: message, variant: "destructive" });
-    }
-  };
-
-  const handleExportMasterPack = async () => {
-    try {
-      await exportMasterBusinessPackExcel({
-        monthKey,
-        totalCollected,
-        totalExpenses: totalExpensesAmount,
-        netIncome,
-        collectionRate,
-        occupancyRate,
-        outstandingBalance,
-        expectedRent,
-        units: dashboardData?.units ?? [],
-        payments: filteredPayments,
-        expenses: expenses ?? [],
-        topRiskTenants,
-        reminders: reminderQueue,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to export master business pack";
-      toast({ title: "Export failed", description: message, variant: "destructive" });
-    }
-  };
-
-  const handlePrintLoanPack = async () => {
-    try {
-      await printLoanPackLayout({
-        monthKey,
-        totalCollected,
-        totalExpenses: totalExpensesAmount,
-        netIncome,
-        collectionRate,
-        occupancyRate,
-        outstandingBalance,
-        expectedRent,
-        units: dashboardData?.units ?? [],
-        payments: filteredPayments,
-        expenses: expenses ?? [],
-        topRiskTenants,
-        reminders: reminderQueue,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to open print layout";
-      toast({ title: "Print failed", description: message, variant: "destructive" });
-    }
-  };
-
-  const handlePrintMasterPack = async () => {
-    try {
-      await printMasterPackLayout({
-        monthKey,
-        totalCollected,
-        totalExpenses: totalExpensesAmount,
-        netIncome,
-        collectionRate,
-        occupancyRate,
-        outstandingBalance,
-        expectedRent,
-        units: dashboardData?.units ?? [],
-        payments: filteredPayments,
-        expenses: expenses ?? [],
-        topRiskTenants,
-        reminders: reminderQueue,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to open print layout";
-      toast({ title: "Print failed", description: message, variant: "destructive" });
-    }
-  };
 
   const topExpenseCategories = useMemo(() => {
     return Object.entries(expensesByCategory)
@@ -394,7 +297,47 @@ export default function Reports() {
       .slice(0, 3);
   }, [expensesByCategory]);
 
+  const monthlySummary = useMemo(
+    () =>
+      buildMonthlySummary({
+        periodLabel: dateLabel,
+        cashReceived,
+        billed: billedAmount,
+        applied: appliedAmount,
+        expenses: totalExpensesAmount,
+        arrears: outstandingBalance,
+        credit: totalCredit,
+        occupiedUnits,
+        totalUnits,
+        tenantsInArrears,
+        topExpenseCategory: topExpenseCategories[0] ?? null,
+        previous: previousDashboardData
+          ? {
+              cashReceived: previousDashboardData.stats.totalAllocated,
+              expenses: previousTotalExpenses ?? 0,
+            }
+          : null,
+      }),
+    [
+      dateLabel,
+      cashReceived,
+      billedAmount,
+      appliedAmount,
+      totalExpensesAmount,
+      outstandingBalance,
+      totalCredit,
+      occupiedUnits,
+      totalUnits,
+      tenantsInArrears,
+      topExpenseCategories,
+      previousDashboardData,
+      previousTotalExpenses,
+    ]
+  );
+
   const previousCollected = previousDashboardData?.stats?.totalAllocated ?? 0;
+  // NOTE: previous-period cash is approximated by applied amounts; the payments
+  // query is not month-scoped for prior periods.
   const previousExpenses = previousTotalExpenses ?? 0;
   const previousNetIncome = previousCollected - previousExpenses;
   const collectionDelta = totalCollected - previousCollected;
@@ -517,30 +460,38 @@ export default function Reports() {
   }, [dashboardData]);
 
   const cashflowTrendData = useMemo(() => {
-    const map = new Map<string, { collected: number; expenses: number }>();
-    const labelFor = (isoDate: string) => {
+    // Keyed by a sortable date so the line runs left to right. Payments arrive
+    // newest-first and expenses were appended after them, so the chart used to
+    // read backwards with stray points tacked on the end.
+    const map = new Map<string, { sortKey: string; collected: number; expenses: number }>();
+
+    const bucket = (isoDate: string) => {
       const d = new Date(isoDate);
-      return selectedDate ? format(d, "MMM d") : format(d, "yyyy-MM");
+      if (Number.isNaN(d.getTime())) return null;
+      return selectedDate
+        ? { sortKey: toDateKey(d), label: format(d, "MMM d") }
+        : { sortKey: toMonthKey(d), label: format(d, "MMM yyyy") };
     };
 
-    filteredPayments.forEach((p) => {
-      const key = labelFor(p.payment_date);
-      const row = map.get(key) || { collected: 0, expenses: 0 };
-      row.collected += Number(p.amount || 0);
-      map.set(key, row);
-    });
-    (expenses ?? []).forEach((e) => {
-      const key = labelFor(e.expense_date);
-      const row = map.get(key) || { collected: 0, expenses: 0 };
-      row.expenses += Number(e.amount || 0);
-      map.set(key, row);
-    });
-    return [...map.entries()].map(([period, v]) => ({
-      period,
-      collected: Math.round(v.collected),
-      expenses: Math.round(v.expenses),
-      net: Math.round(v.collected - v.expenses),
-    }));
+    const add = (isoDate: string, field: "collected" | "expenses", amount: number) => {
+      const b = bucket(isoDate);
+      if (!b) return;
+      const row = map.get(b.label) ?? { sortKey: b.sortKey, collected: 0, expenses: 0 };
+      row[field] += amount;
+      map.set(b.label, row);
+    };
+
+    filteredPayments.forEach((p) => add(p.payment_date, "collected", Number(p.amount || 0)));
+    (expenses ?? []).forEach((e) => add(e.expense_date, "expenses", Number(e.amount || 0)));
+
+    return [...map.entries()]
+      .sort((a, b) => a[1].sortKey.localeCompare(b[1].sortKey))
+      .map(([period, v]) => ({
+        period,
+        collected: Math.round(v.collected),
+        expenses: Math.round(v.expenses),
+        net: Math.round(v.collected - v.expenses),
+      }));
   }, [filteredPayments, expenses, selectedDate]);
 
   const assistantActions = useMemo(
@@ -565,71 +516,6 @@ export default function Reports() {
     ]
   );
 
-  const handleGenerateNarrative = () => {
-    generateNarrative.mutate({
-      monthKey: narrativeMonthKey,
-      input: {
-        monthLabel: dateLabel,
-        totalCollected,
-        totalExpenses: totalExpensesAmount,
-        netIncome,
-        collectionRate,
-        billedAmount,
-        expectedRent,
-        topExpenseCategories,
-      },
-    });
-  };
-
-  const aiStatus: "ready" | "offline" | "retrying" | "failed" = generateNarrative.isPending
-    ? "retrying"
-    : generateNarrative.isError
-      ? "failed"
-      : aiHealth?.ok
-        ? "ready"
-        : "offline";
-
-  const aiStatusBadge = (() => {
-    if (aiHealthLoading || aiHealthChecking) {
-      return (
-        <Badge variant="outline" className="gap-1">
-          <RotateCw className="h-3 w-3 animate-spin" />
-          Checking
-        </Badge>
-      );
-    }
-    if (aiStatus === "ready") {
-      return (
-        <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-700">
-          <Wifi className="h-3 w-3" />
-          Ready
-        </Badge>
-      );
-    }
-    if (aiStatus === "retrying") {
-      return (
-        <Badge variant="outline" className="gap-1 border-amber-300 text-amber-700">
-          <RotateCw className="h-3 w-3 animate-spin" />
-          Retrying
-        </Badge>
-      );
-    }
-    if (aiStatus === "failed") {
-      return (
-        <Badge variant="destructive" className="gap-1">
-          <AlertTriangle className="h-3 w-3" />
-          Failed
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="destructive" className="gap-1">
-        <WifiOff className="h-3 w-3" />
-        Offline
-      </Badge>
-    );
-  })();
-
   return (
     <PageContainer title="Financial Reports" subtitle={dateLabel}>
       {/* EXPORT ACTIONS */}
@@ -639,60 +525,66 @@ export default function Reports() {
             <Download className="h-4 w-4 text-primary" />
             <span className="text-sm font-semibold text-center">Downloads & Print Layouts</span>
           </div>
-          <ChevronDown className={`absolute right-3 h-4 w-4 text-slate-500 transition-transform duration-200 ${exportsOpen ? "rotate-180" : ""}`} />
+          <ChevronDown className={`absolute right-3 h-4 w-4 text-muted-foreground transition-transform duration-200 ${exportsOpen ? "rotate-180" : ""}`} />
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
-          <div className="surface-panel p-2 flex flex-wrap items-center justify-center gap-2">
-            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportSummary}><Download className="h-4 w-4 mr-2" />Summary</Button>
-            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportStatement}><Download className="h-4 w-4 mr-2" />Statement</Button>
-            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportOperationsPack}><Download className="h-4 w-4 mr-2" />Operations Pack</Button>
-            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportLoanPack}><Download className="h-4 w-4 mr-2" />Loan Pack</Button>
-            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportTenantLedger}><Download className="h-4 w-4 mr-2" />Tenant Ledger</Button>
-            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportPropertyPerformance}><Download className="h-4 w-4 mr-2" />Property Pack</Button>
-            <Button size="sm" className="w-full sm:w-auto" onClick={handleExportMasterPack}><Download className="h-4 w-4 mr-2" />Master Pack</Button>
-            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handlePrintLoanPack}>Print Loan PDF</Button>
-            <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handlePrintMasterPack}>Print Master PDF</Button>
+          <div className="surface-panel p-3 space-y-4">
+            <div>
+              <p className="text-sm font-semibold">Operations Pack</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                {dateLabel}: summary, rent roll, arrears, collections, expenses, per-property
+                performance and the reminder queue. This replaced the old Master Pack and
+                covers everything it did.
+              </p>
+              <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportOperations}>
+                <Download className="h-4 w-4 mr-2" />
+                Download Excel
+              </Button>
+            </div>
+
+            <div className="border-t border-border/60 pt-3">
+              <p className="text-sm font-semibold">Lender Pack</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                {annual
+                  ? `${annual.from} to ${annual.to}: twelve months of income history, average monthly net and collection rate — what a bank asks for.`
+                  : "Twelve months of income history for a loan application."}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button size="sm" className="w-full sm:w-auto" disabled={!annual} onClick={handleExportLender}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Excel
+                </Button>
+                <Button size="sm" variant="outline" className="w-full sm:w-auto" disabled={!annual} onClick={handlePrintLender}>
+                  Print as PDF
+                </Button>
+              </div>
+            </div>
+
+            <div className="border-t border-border/60 pt-3">
+              <p className="text-sm font-semibold">Accounting exports</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Ledger-level detail for an accountant or auditor.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportSummary}>
+                  <Download className="h-4 w-4 mr-2" />
+                  KPI Summary
+                </Button>
+                <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={handleExportStatement}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Full Statement
+                </Button>
+              </div>
+            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>
 
-      {/* DATE SELECTOR */}
-      <div className="surface-panel flex items-center justify-between mb-6 p-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() =>
-            setSelectedDate((prev) => (prev ? subMonths(prev, 1) : new Date()))
-          }
-        >
-          <ChevronLeft className="h-5 w-5 text-slate-400" />
-        </Button>
-
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5 text-primary" />
-            <h2 className="font-bold text-sm sm:text-base text-foreground">
-              {dateLabel}
-            </h2>
-          </div>
-          <button
-            onClick={() => setSelectedDate(selectedDate ? null : new Date())}
-            className="text-[10px] text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline"
-          >
-            {selectedDate ? "Switch to All-Time" : "Back to Monthly View"}
-          </button>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() =>
-            setSelectedDate((prev) => (prev ? addMonths(prev, 1) : new Date()))
-          }
-        >
-          <ChevronRight className="h-5 w-5 text-slate-400" />
-        </Button>
-      </div>
+      <MonthSelector
+        value={selectedDate}
+        onChange={setSelectedDate}
+        allTimeLabel="All-Time Financials"
+      />
 
       {isLoading ? (
         <div className="space-y-4">
@@ -707,65 +599,112 @@ export default function Reports() {
             className={cn(
               "p-5 sm:p-6 border-none shadow-md",
               isProfit
-                ? "bg-blue-50/80 text-blue-900"
+                ? "bg-accent text-accent-foreground"
                 : "bg-destructive/5 text-destructive"
             )}
           >
             <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">
               {isProfit ? "Net Surplus" : "Net Deficit"}
             </p>
-            <p className="text-3xl font-black">
-              KES {Math.abs(netIncome).toLocaleString()}
+            <p className={cn("font-black", getResponsiveFontClass(formatKES(Math.abs(netIncome))))}>
+              {formatKES(Math.abs(netIncome))}
+            </p>
+            <p className="text-[11px] opacity-70 mt-1">
+              Cash received minus expenses paid
             </p>
           </Card>
 
-          {/* REVENUE / EXPENSES */}
+          {/* CASH IN / OUT */}
           <div className="grid grid-cols-2 gap-4">
             <Card className="p-4">
-              <p className="text-xs uppercase font-bold text-slate-400">
-                Collections
+              <p className="text-xs uppercase font-bold text-muted-foreground">
+                Cash Received
               </p>
-              <p className="text-xl font-black">
-                KES {totalCollected.toLocaleString()}
+              <p className={cn("font-black", getResponsiveFontClass(formatKES(cashReceived)))}>
+                {formatKES(cashReceived)}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Money that arrived {selectedDate ? "this month" : "in total"}
               </p>
             </Card>
 
             <Card className="p-4">
-              <p className="text-xs uppercase font-bold text-slate-400">
-                Expenses
+              <p className="text-xs uppercase font-bold text-muted-foreground">Expenses</p>
+              <p
+                className={cn(
+                  "font-black",
+                  getResponsiveFontClass(formatKES(totalExpensesAmount))
+                )}
+              >
+                {formatKES(totalExpensesAmount)}
               </p>
-              <p className="text-xl font-black">
-                KES {totalExpensesAmount.toLocaleString()}
-              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">Paid out in the period</p>
             </Card>
+
             <Card className="p-4">
-              <p className="text-xs uppercase font-bold text-slate-400">
+              <p className="text-xs uppercase font-bold text-muted-foreground">
                 Occupancy Rate
               </p>
-              <p className="text-xl font-black">
-                {occupancyRate.toFixed(1)}%
-              </p>
+              <p className="text-xl font-black">{occupancyRate.toFixed(1)}%</p>
               <p className="text-[11px] text-muted-foreground mt-1">
                 {occupiedUnits}/{totalUnits} units occupied
               </p>
             </Card>
+
             <Card className="p-4">
-              <p className="text-xs uppercase font-bold text-slate-400">
-                Outstanding Balance
-              </p>
-              <p className="text-xl font-black">
-                KES {outstandingBalance.toLocaleString()}
+              <p className="text-xs uppercase font-bold text-muted-foreground">Arrears</p>
+              <p
+                className={cn(
+                  "font-black",
+                  getResponsiveFontClass(formatKES(outstandingBalance))
+                )}
+              >
+                {formatKES(outstandingBalance)}
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Total unpaid tenant balances
+                {totalCredit > 0
+                  ? `${formatKES(totalCredit)} held in tenant credit`
+                  : "Unpaid tenant balances"}
               </p>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="p-5">
+          {/* RENT ROLL — the accrual view, kept separate from cash above */}
+          <Card className="p-5 min-w-0 overflow-hidden">
+            <h3 className="font-bold text-sm mb-3">
+              Rent Roll {selectedDate ? `for ${dateLabel}` : "(All Time)"}
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Billed</span>
+                <span className="font-semibold tabular-nums">{formatKES(billedAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Applied to these charges</span>
+                <span className="font-semibold tabular-nums">{formatKES(appliedAmount)}</span>
+              </div>
+              <div className="flex justify-between border-t border-border/60 pt-2">
+                <span className="font-semibold">Still owed</span>
+                <span
+                  className={cn(
+                    "font-black tabular-nums",
+                    billedAmount - appliedAmount > 0 ? "text-destructive" : "text-emerald-600"
+                  )}
+                >
+                  {formatKES(billedAmount - appliedAmount)}
+                </span>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-3">
+              Applied money can differ from cash received: a payment that clears an older
+              month's arrears counts towards that month, not this one.
+            </p>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0">
+            <Card className="p-5 min-w-0 overflow-hidden">
               <h3 className="font-bold text-sm mb-3">Occupancy Mix</h3>
-              <div className="h-56">
+              <div className="h-56 w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={occupancyChartData} dataKey="value" nameKey="name" outerRadius={85}>
@@ -779,9 +718,9 @@ export default function Reports() {
               </div>
             </Card>
 
-            <Card className="p-5">
+            <Card className="p-5 min-w-0 overflow-hidden">
               <h3 className="font-bold text-sm mb-3">Tenant Payment Status</h3>
-              <div className="h-56">
+              <div className="h-56 w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={paymentStatusChartData} dataKey="value" nameKey="name" outerRadius={85}>
@@ -806,14 +745,14 @@ export default function Reports() {
             </Card>
           </div>
 
-          <Card className="p-5">
+          <Card className="p-5 min-w-0 overflow-hidden">
             <h3 className="font-bold text-sm mb-3">Property Financial Performance</h3>
-            <div className="h-72">
+            <div className="h-72 w-full min-w-0">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={propertyPerformanceChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="property" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={formatCompact} width={52} />
                   <RechartsTooltip />
                   <Legend />
                   <Bar dataKey="expected" fill="#3b82f6" name="Expected Rent" />
@@ -824,14 +763,14 @@ export default function Reports() {
             </div>
           </Card>
 
-          <Card className="p-5">
+          <Card className="p-5 min-w-0 overflow-hidden">
             <h3 className="font-bold text-sm mb-3">Cashflow Trend</h3>
-            <div className="h-72">
+            <div className="h-72 w-full min-w-0">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={cashflowTrendData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={formatCompact} width={52} />
                   <RechartsTooltip />
                   <Legend />
                   <Line type="monotone" dataKey="collected" stroke="#16a34a" strokeWidth={2} dot={false} name="Collected" />
@@ -843,14 +782,14 @@ export default function Reports() {
           </Card>
 
           {/* COLLECTION RATE */}
-          <Card className="p-5">
+          <Card className="p-5 min-w-0 overflow-hidden">
             <div className="flex justify-between mb-2">
               <span className="text-xs font-bold">
                 Collection Efficiency
               </span>
               <Badge>{collectionRate.toFixed(0)}%</Badge>
             </div>
-            <div className="w-full bg-slate-100 h-3 rounded-full">
+            <div className="w-full bg-muted h-3 rounded-full">
               <div
                 className="bg-primary h-full rounded-full"
                 style={{ width: `${Math.min(collectionRate, 100)}%` }}
@@ -859,7 +798,7 @@ export default function Reports() {
           </Card>
 
           {/* LATEST PAYMENTS */}
-          <Card className="p-5">
+          <Card className="p-5 min-w-0 overflow-hidden">
             <div className="flex items-center gap-2 mb-3">
               <Receipt className="h-4 w-4" />
               <span className="font-bold text-sm">
@@ -870,7 +809,7 @@ export default function Reports() {
             <div className="space-y-2">
               {filteredPayments.slice(0, 5).map((p) => (
                 <div key={p.id} className="flex justify-between text-sm">
-                  <span>KES {p.amount.toLocaleString()}</span>
+                  <span className="tabular-nums">{formatKES(p.amount)}</span>
                   <span>
                     {format(new Date(p.payment_date), "MMM d, yyyy")}
                   </span>
@@ -879,7 +818,7 @@ export default function Reports() {
             </div>
           </Card>
 
-          <Card className="p-5">
+          <Card className="p-5 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-sm">Top Arrears</h3>
               <Badge variant="outline">{topArrearsUnits.length} units</Badge>
@@ -896,8 +835,8 @@ export default function Reports() {
                         {u.property_name} | Unit {u.unit_number}
                       </p>
                     </div>
-                    <p className="text-sm font-black text-destructive">
-                      KES {Math.round(Number(u.balance || 0)).toLocaleString()}
+                    <p className="text-sm font-black text-destructive tabular-nums">
+                      {formatKES(Math.round(Number(u.balance || 0)))}
                     </p>
                   </div>
                 ))}
@@ -905,17 +844,16 @@ export default function Reports() {
             )}
           </Card>
 
-          <Card className="p-5">
+          <Card className="p-5 min-w-0 overflow-hidden">
             <h3 className="font-bold text-sm mb-3">Document Library Guidance</h3>
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p><span className="font-semibold text-foreground">Summary:</span> quick month-end KPI brief for internal review.</p>
-              <p><span className="font-semibold text-foreground">Statement:</span> detailed ledger-level evidence for accounting/audit trail.</p>
-              <p><span className="font-semibold text-foreground">Operations Pack:</span> rent roll + arrears + collections + expenses + risk queue.</p>
-              <p><span className="font-semibold text-foreground">Loan Pack:</span> lender-facing cashflow and repayment-capacity evidence.</p>
+              <p><span className="font-semibold text-foreground">Operations Pack:</span> one period, everything in it — rent roll, arrears ranked by size, every payment and every cost.</p>
+              <p><span className="font-semibold text-foreground">Lender Pack:</span> twelve months of collections and costs, with the average monthly net a bank underwrites against.</p>
+              <p><span className="font-semibold text-foreground">Full Statement:</span> the raw per-tenant, per-month ledger, for an accountant.</p>
             </div>
           </Card>
 
-          <Card className="p-5">
+          <Card className="p-5 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold">Expense Concentration</span>
               <Badge variant="outline">
@@ -932,7 +870,7 @@ export default function Reports() {
                     <div key={c.name} className="rounded-xl border border-border/60 p-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-semibold">{c.name}</span>
-                        <span>KES {Math.round(c.amount).toLocaleString()}</span>
+                        <span className="tabular-nums">{formatKES(Math.round(c.amount))}</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-1">{share.toFixed(1)}% of total expenses</p>
                     </div>
@@ -943,15 +881,15 @@ export default function Reports() {
           </Card>
 
           <Collapsible open={intelligenceOpen} onOpenChange={setIntelligenceOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-slate-50 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10 text-primary">
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <span className="text-sm font-semibold">Intelligence & AI</span>
-                <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">6 sections</span>
+                
               </div>
-              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${intelligenceOpen ? "rotate-180" : ""}`} />
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${intelligenceOpen ? "rotate-180" : ""}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3 space-y-5">
               <AssistantPanel
@@ -967,7 +905,7 @@ export default function Reports() {
                 onAction={(route) => navigate(route)}
               />
 
-              <Card className="p-5">
+              <Card className="p-5 min-w-0 overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-sm">Trend Signals</h3>
                   <Badge variant="outline">
@@ -979,13 +917,13 @@ export default function Reports() {
                     <div className="rounded-xl border border-border/60 p-3">
                       <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Collections Delta</p>
                       <p className={cn("text-lg font-black", collectionDelta >= 0 ? "text-emerald-600" : "text-destructive")}>
-                        {collectionDelta >= 0 ? "+" : "-"}KES {Math.abs(collectionDelta).toLocaleString()}
+                        {collectionDelta >= 0 ? "+" : "-"}{formatKES(Math.abs(collectionDelta))}
                       </p>
                     </div>
                     <div className="rounded-xl border border-border/60 p-3">
                       <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Net Income Delta</p>
                       <p className={cn("text-lg font-black", netDelta >= 0 ? "text-emerald-600" : "text-destructive")}>
-                        {netDelta >= 0 ? "+" : "-"}KES {Math.abs(netDelta).toLocaleString()}
+                        {netDelta >= 0 ? "+" : "-"}{formatKES(Math.abs(netDelta))}
                       </p>
                     </div>
                   </div>
@@ -994,7 +932,7 @@ export default function Reports() {
                 )}
               </Card>
 
-              <Card className="p-5">
+              <Card className="p-5 min-w-0 overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-sm">Top Risk Tenants</h3>
                   <Badge variant="outline">{topRiskTenants.length} shown</Badge>
@@ -1037,7 +975,7 @@ export default function Reports() {
                 )}
               </Card>
 
-              <Card className="p-5">
+              <Card className="p-5 min-w-0 overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-sm">Anomalies</h3>
                   <Badge variant="outline">{anomalies.length}</Badge>
@@ -1055,56 +993,31 @@ export default function Reports() {
                 )}
               </Card>
 
-              <Card className="p-5">
-            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="font-bold text-sm">AI Summary</span>
-                {aiStatusBadge}
-              </div>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  disabled={aiHealthChecking}
-                  onClick={() => refetchAiHealth()}
-                >
-                  Check AI
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  disabled={generateNarrative.isPending || !aiHealth?.ok}
-                  onClick={handleGenerateNarrative}
-                >
-                  {generateNarrative.isPending
-                    ? "Generating..."
-                    : narrative
-                      ? "Regenerate"
-                      : "Generate Summary"}
-                </Button>
-              </div>
-            </div>
+              <Card className="p-5 min-w-0 overflow-hidden">
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h3 className="font-bold text-sm">{monthlySummary.headline}</h3>
+                </div>
 
-            <p className="text-[11px] text-muted-foreground mb-3 break-all">
-              {aiHealth?.ok
-                ? `AI endpoint online at ${aiHealth.baseUrl} (${aiHealth.model}).`
-                : aiHealth?.error ?? "AI service is offline. Use Check AI after starting the service."}
-            </p>
+                <div className="mt-3 space-y-2 text-sm text-muted-foreground leading-relaxed">
+                  {monthlySummary.paragraphs.map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                </div>
 
-            {narrativeLoading ? (
-              <Skeleton className="h-20 rounded-xl" />
-            ) : narrative?.narrative_text ? (
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                {narrative.narrative_text}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No AI summary yet. Generate one for this period.
-              </p>
-            )}
+                <div className="mt-4 border-t border-border/60 pt-3">
+                  <p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground mb-2">
+                    What to do next
+                  </p>
+                  <ul className="space-y-1.5">
+                    {monthlySummary.actions.map((action) => (
+                      <li key={action} className="text-sm flex gap-2">
+                        <span aria-hidden="true" className="text-primary">&bull;</span>
+                        <span>{action}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </Card>
 
               <Card>
@@ -1178,6 +1091,26 @@ export default function Reports() {
                           updateReminderAction.isPending &&
                           updateReminderAction.variables?.id === row.id;
 
+                        // The queue used to let a landlord mark a reminder
+                        // "sent" without anything being sent. This opens
+                        // WhatsApp with the message ready to go.
+                        const unit = dashboardData?.units?.find(
+                          (u) => u.tenant_id === row.tenant_id
+                        );
+                        const sendLink =
+                          unit?.tenant_phone && (unit.balance ?? 0) > 0
+                            ? whatsappLink(
+                                unit.tenant_phone,
+                                buildArrearsReminder({
+                                  tenantName: unit.tenant_name ?? "there",
+                                  unitNumber: unit.unit_number,
+                                  amount: unit.balance,
+                                  monthsBehind: 1,
+                                  payTo: landlordSettings?.payTo || null,
+                                })
+                              )
+                            : null;
+
                         return (
                           <div
                             key={row.id}
@@ -1218,26 +1151,57 @@ export default function Reports() {
                                 className="flex flex-wrap items-center gap-1"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 px-2 text-[11px]"
-                                  disabled={
-                                    isRowUpdating ||
-                                    row.status === "sent" ||
-                                    row.status === "cancelled"
-                                  }
-                                  onClick={() =>
-                                    updateReminderAction.mutate({
-                                      id: row.id,
-                                      monthKey: riskMonthKey,
-                                      action: "sent",
-                                      notes: "Marked sent from reports queue",
-                                    })
-                                  }
-                                >
-                                  Mark Sent
-                                </Button>
+                                {sendLink ? (
+                                  <Button
+                                    size="sm"
+                                    className="h-7 px-2 text-[11px]"
+                                    disabled={
+                                      isRowUpdating ||
+                                      row.status === "sent" ||
+                                      row.status === "cancelled"
+                                    }
+                                    asChild
+                                  >
+                                    <a
+                                      href={sendLink}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={() =>
+                                        updateReminderAction.mutate({
+                                          id: row.id,
+                                          monthKey: riskMonthKey,
+                                          action: "sent",
+                                          notes: "Sent via WhatsApp",
+                                        })
+                                      }
+                                    >
+                                      <MessageCircle className="h-3 w-3 mr-1" />
+                                      Send
+                                    </a>
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-[11px]"
+                                    disabled={
+                                      isRowUpdating ||
+                                      row.status === "sent" ||
+                                      row.status === "cancelled"
+                                    }
+                                    onClick={() =>
+                                      updateReminderAction.mutate({
+                                        id: row.id,
+                                        monthKey: riskMonthKey,
+                                        action: "sent",
+                                        notes: "Marked sent manually",
+                                      })
+                                    }
+                                    title="No phone number on file, or nothing outstanding"
+                                  >
+                                    Mark Sent
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"

@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient, UseMutationResult } from "@tanst
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
+import { buildRentCharges } from "@/lib/charges";
+import { currentMonthKey, parseDateKey, toMonthKey } from "@/lib/month";
+import { getSupabaseErrorMessage } from "@/lib/supabase-errors";
 
 type Tenant = Database["public"]["Tables"]["tenants"]["Row"];
 
@@ -26,19 +29,16 @@ type TenantSelectRow = Tenant & {
   } | null;
 };
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Unexpected error";
-}
-
 async function getUserIdOrNull(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data?.session?.user?.id ?? null;
 }
 
-export function useTenants() {
+export function useTenants(options?: { includeArchived?: boolean }) {
+  const includeArchived = options?.includeArchived ?? false;
+
   return useQuery<TenantWithRelations[], Error>({
-    queryKey: ["tenants"],
+    queryKey: ["tenants", includeArchived ? "all" : "active"],
     queryFn: async (): Promise<TenantWithRelations[]> => {
       const userId = await getUserIdOrNull();
       if (!userId) return [];
@@ -65,7 +65,7 @@ export function useTenants() {
       const unitIds = (units as UnitIdRow[]).map((u) => u.id).filter(Boolean);
       if (unitIds.length === 0) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("tenants")
         .select(`
           *,
@@ -75,8 +75,16 @@ export function useTenants() {
             properties!units_property_id_fkey(id, name)
           )
         `)
-        .in("unit_id", unitIds)
+        .eq("user_id", userId)
         .order("name", { ascending: true });
+
+      if (!includeArchived) {
+        // Archived tenants have no unit, so scope to the caller's units only
+        // when we are excluding them.
+        query = query.eq("status", "active").in("unit_id", unitIds);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -92,22 +100,7 @@ export function useTenants() {
             }
           : null;
 
-        const base: Tenant = {
-          id: r.id,
-          name: r.name,
-          phone: r.phone,
-          rent_amount: r.rent_amount,
-          unit_id: r.unit_id,
-          created_at: r.created_at,
-          updated_at: r.updated_at,
-          user_id: r.user_id,
-          lease_start: r.lease_start,
-          opening_balance: r.opening_balance,
-          security_deposit: r.security_deposit,
-          first_month_override: r.first_month_override,
-          is_prorated: r.is_prorated,
-        };
-
+        const { units: _units, ...base } = r;
         return { ...base, units: unitsRel } as TenantWithRelations;
       });
     },
@@ -162,55 +155,33 @@ export function useCreateTenant(): UseMutationResult<
       if (tenantError) throw tenantError;
 
       if (tenantData.opening_balance && tenantData.opening_balance > 0) {
-        const leaseMonth =
-          tenantData.lease_start?.slice(0, 7) || new Date().toISOString().slice(0, 7);
+        const leaseMonth = tenantData.lease_start
+          ? toMonthKey(parseDateKey(tenantData.lease_start))
+          : currentMonthKey();
 
-        try {
-          await supabase.rpc("create_opening_balance_charge", {
-            p_tenant_id: tenant.id,
-            p_amount: tenantData.opening_balance,
-            p_effective_month: leaseMonth,
-            p_note: "Opening balance - arrears before lease start",
-          });
-        } catch (err: unknown) {
-          console.error("Failed to create opening balance charge:", err);
-        }
+        const { error: openingError } = await supabase.rpc("create_opening_balance_charge", {
+          p_tenant_id: tenant.id,
+          p_amount: Math.round(tenantData.opening_balance),
+          p_effective_month: leaseMonth,
+          p_note: "Opening balance - arrears before lease start",
+        });
+        if (openingError) throw openingError;
       }
 
       if (tenantData.lease_start && tenantData.rent_amount) {
-        const leaseStart = new Date(tenantData.lease_start);
-        const currentMonth = new Date();
-        let chargeDate = new Date(leaseStart.getFullYear(), leaseStart.getMonth(), 1);
-        const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-
-        let isFirstMonth = true;
-        const chargesToCreate: Database["public"]["Tables"]["charges"]["Insert"][] = [];
-
-        while (chargeDate <= endDate) {
-          const chargeMonth = chargeDate.toISOString().slice(0, 7);
-          let chargeAmount = tenantData.rent_amount;
-
-          if (isFirstMonth && tenantData.is_prorated && tenantData.first_month_override) {
-            chargeAmount = tenantData.first_month_override;
-          }
-
-          chargesToCreate.push({
-            tenant_id: tenant.id,
-            amount: chargeAmount,
-            charge_month: chargeMonth,
-            type: "rent",
-            note: isFirstMonth ? "First month rent" : "Monthly rent",
-          });
-
-          isFirstMonth = false;
-          chargeDate.setMonth(chargeDate.getMonth() + 1);
-        }
+        const chargesToCreate = buildRentCharges({
+          rentAmount: tenantData.rent_amount,
+          leaseStart: tenantData.lease_start,
+          isProrated: tenantData.is_prorated,
+          firstMonthOverride: tenantData.first_month_override,
+        }).map<Database["public"]["Tables"]["charges"]["Insert"]>((charge) => ({
+          ...charge,
+          tenant_id: tenant.id,
+        }));
 
         if (chargesToCreate.length > 0) {
           const { error: chargesError } = await supabase.from("charges").insert(chargesToCreate);
-          if (chargesError) {
-            console.error("Failed to create rent charges:", chargesError);
-          }
+          if (chargesError) throw chargesError;
         }
       }
 
@@ -221,17 +192,16 @@ export function useCreateTenant(): UseMutationResult<
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["charges"] });
       toast({
-        title: addAnother ? "Tenant Added" : "Success",
+        title: "Tenant added",
         description: addAnother
-          ? "Tenant and charges created. Ready for next entry"
-          : "Tenant and charges created successfully",
+          ? "Rent charged from their lease start. Ready for the next one."
+          : "Rent has been charged from their lease start date.",
       });
     },
     onError: (error: unknown) => {
-      console.error("Create tenant error:", error);
       toast({
-        title: "Error",
-        description: getErrorMessage(error),
+        title: "Could not add tenant",
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -248,6 +218,13 @@ export function useUpdateTenant(): UseMutationResult<
 
   return useMutation<Tenant, Error, Partial<Tenant> & { id: string }, unknown>({
     mutationFn: async ({ id, ...updates }) => {
+      const { data: before, error: beforeError } = await supabase
+        .from("tenants")
+        .select("rent_amount, opening_balance, lease_start")
+        .eq("id", id)
+        .single();
+      if (beforeError) throw beforeError;
+
       const { data, error } = await supabase
         .from("tenants")
         .update(updates)
@@ -256,23 +233,105 @@ export function useUpdateTenant(): UseMutationResult<
         .single();
 
       if (error) throw error;
-      return data as Tenant;
+      const tenant = data as Tenant;
+
+      // The row and the ledger have to move together. Changing rent used to
+      // update the tenant record while leaving every charge at the old amount.
+      const rentChanged =
+        updates.rent_amount !== undefined &&
+        Number(updates.rent_amount) !== Number(before.rent_amount ?? 0);
+      const leaseChanged =
+        updates.lease_start !== undefined && updates.lease_start !== before.lease_start;
+
+      if (rentChanged || leaseChanged) {
+        const { error: syncError } = await supabase.rpc("sync_tenant_charges", {
+          p_tenant_id: id,
+          p_reprice_from: null,
+        });
+        if (syncError) throw syncError;
+      }
+
+      const openingChanged =
+        updates.opening_balance !== undefined &&
+        Number(updates.opening_balance) !== Number(before.opening_balance ?? 0);
+
+      if (openingChanged && Number(updates.opening_balance) > 0) {
+        const effectiveMonth = tenant.lease_start
+          ? toMonthKey(parseDateKey(tenant.lease_start))
+          : currentMonthKey();
+
+        const { error: openingError } = await supabase.rpc("create_opening_balance_charge", {
+          p_tenant_id: id,
+          p_amount: Math.round(Number(updates.opening_balance)),
+          p_effective_month: effectiveMonth,
+          p_note: "Opening balance - arrears before lease start",
+        });
+        if (openingError) throw openingError;
+      }
+
+      return tenant;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tenants"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast({ title: "Success", description: "Tenant updated" });
+      queryClient.invalidateQueries({ queryKey: ["tenant-ledger"] });
+      queryClient.invalidateQueries({ queryKey: ["charges"] });
+      toast({ title: "Tenant updated", description: "Rent and charges are back in sync." });
     },
     onError: (error: unknown) => {
       toast({
-        title: "Error",
-        description: getErrorMessage(error),
+        title: "Could not update tenant",
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     },
   });
 }
 
+/**
+ * Move a tenant out. Keeps their payment history and frees the unit.
+ * Use this rather than deletion — deleting cascades away every charge and
+ * payment, which retroactively changes months you have already closed.
+ */
+export function useArchiveTenant(): UseMutationResult<
+  void,
+  Error,
+  { id: string; movedOutOn?: string | null },
+  unknown
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { id: string; movedOutOn?: string | null }, unknown>({
+    mutationFn: async ({ id, movedOutOn }) => {
+      const { error } = await supabase.rpc("archive_tenant", {
+        p_tenant_id: id,
+        p_moved_out_on: movedOutOn ?? null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["units"] });
+      toast({
+        title: "Tenant moved out",
+        description: "Their payment history is kept and the unit is free again.",
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Could not move tenant out",
+        description: getSupabaseErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+/**
+ * Permanently erase a tenant and everything attached to them.
+ * Only for records created in error — for a real move-out use `useArchiveTenant`.
+ */
 export function useDeleteTenant(): UseMutationResult<void, Error, string, unknown> {
   const queryClient = useQueryClient();
 
@@ -288,12 +347,13 @@ export function useDeleteTenant(): UseMutationResult<void, Error, string, unknow
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["charges"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-      toast({ title: "Success", description: "Tenant and all related data removed" });
+      queryClient.invalidateQueries({ queryKey: ["units"] });
+      toast({ title: "Tenant deleted", description: "The record and its history are gone." });
     },
     onError: (error: unknown) => {
       toast({
-        title: "Error",
-        description: getErrorMessage(error),
+        title: "Could not delete tenant",
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     },

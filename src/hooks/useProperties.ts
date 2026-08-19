@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, UseMutationResult } from '@tanst
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
+import { getSupabaseErrorMessage } from "@/lib/supabase-errors";
 
 export type NumberingStyle = 'numbers' | 'letters' | 'block_unit' | 'floor_unit';
 
@@ -27,11 +28,6 @@ type PropertyLocationFields = {
 
 type CreatePropertyInput = { name: string; numbering_style?: NumberingStyle } & PropertyLocationFields;
 type UpdatePropertyInput = { id: string; name: string; numbering_style?: NumberingStyle } & PropertyLocationFields;
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return 'Unexpected error';
-}
 
 async function getUserIdOrNull(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
@@ -111,7 +107,7 @@ export function useCreateProperty(): UseMutationResult<Property, Error, CreatePr
       toast({ title: 'Success', description: 'Property created' });
     },
     onError: (error: unknown) => {
-      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error', description: getSupabaseErrorMessage(error), variant: 'destructive' });
     },
   });
 }
@@ -130,7 +126,7 @@ export function useDeleteProperty(): UseMutationResult<void, Error, string, unkn
       toast({ title: 'Success', description: 'Property removed' });
     },
     onError: (error: unknown) => {
-      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error', description: getSupabaseErrorMessage(error), variant: 'destructive' });
     },
   });
 }
@@ -177,7 +173,7 @@ export function useUpdateProperty(): UseMutationResult<Property, Error, UpdatePr
       toast({ title: 'Success', description: 'Property updated' });
     },
     onError: (error: unknown) => {
-      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error', description: getSupabaseErrorMessage(error), variant: 'destructive' });
     },
   });
 }

@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient, UseMutationResult } from "@tanst
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
+import { currentDateKey, currentMonthKey, toMonthKey } from "@/lib/month";
+import { getSupabaseErrorMessage } from "@/lib/supabase-errors";
 
 export type ExpenseCategory = Database["public"]["Tables"]["expense_categories"]["Row"];
 type ExpenseRow = Database["public"]["Tables"]["expenses"]["Row"];
@@ -32,11 +34,6 @@ export type CreateExpenseInput = {
   expense_date?: string;
 };
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Unexpected error";
-}
-
 async function getUserIdOrNull(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data?.session?.user?.id ?? null;
@@ -61,7 +58,7 @@ export function useExpenseCategories() {
 }
 
 export function useExpenses(month?: string | null) {
-  const filterMonth = month === undefined ? new Date().toISOString().slice(0, 7) : month;
+  const filterMonth = month === undefined ? currentMonthKey() : month;
 
   return useQuery<Expense[], Error>({
     queryKey: ["expenses", filterMonth],
@@ -104,7 +101,7 @@ export function useTotalExpenses(selectedDate: Date | string | null) {
   let monthString: string | null = null;
 
   if (selectedDate instanceof Date) {
-    monthString = selectedDate.toISOString().slice(0, 7);
+    monthString = toMonthKey(selectedDate);
   } else if (typeof selectedDate === "string") {
     monthString = selectedDate.includes("-") ? selectedDate.slice(0, 7) : selectedDate;
   }
@@ -119,7 +116,7 @@ export function useCreateExpense(): UseMutationResult<Expense, Error, CreateExpe
 
   return useMutation<Expense, Error, CreateExpenseInput, unknown>({
     mutationFn: async (expense) => {
-      const expenseDate = expense.expense_date ?? new Date().toISOString().slice(0, 10);
+      const expenseDate = expense.expense_date ?? currentDateKey();
 
       const insertPayload: ExpenseInsert = {
         property_id: expense.property_id,
@@ -139,12 +136,12 @@ export function useCreateExpense(): UseMutationResult<Expense, Error, CreateExpe
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast({ title: "Success", description: "Expense recorded" });
+      toast({ title: "Expense recorded" });
     },
     onError: (error: unknown) => {
       toast({
         title: "Error",
-        description: getErrorMessage(error),
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -166,7 +163,7 @@ export function useDeleteExpense(): UseMutationResult<void, Error, string, unkno
     onError: (error: unknown) => {
       toast({
         title: "Error",
-        description: getErrorMessage(error),
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -192,7 +189,7 @@ export function useCreateCategory(): UseMutationResult<ExpenseCategory, Error, s
     onError: (error: unknown) => {
       toast({
         title: "Error",
-        description: getErrorMessage(error),
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     },

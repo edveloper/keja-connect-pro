@@ -121,24 +121,55 @@ export default function Help() {
             <CardContent>
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="help-1">
-                  <AccordionTrigger>How do I set up a new month properly?</AccordionTrigger>
+                  <AccordionTrigger>Do I need to do anything at the start of a month?</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground">
-                    Confirm the month selector on Dashboard, then record all payments and expenses against
-                    that same month. This keeps reports and balances accurate.
+                    No. Rent is charged to every active tenant automatically on the 1st, and
+                    anything unpaid carries forward as arrears. Just record payments as they
+                    come in.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="help-2">
-                  <AccordionTrigger>Can I track partial payments and arrears?</AccordionTrigger>
+                  <AccordionTrigger>How are part payments applied?</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground">
-                    Yes. Keja-Connect supports partial payments, arrears, and overpayments automatically
-                    through tenant balance updates.
+                    Always to the oldest unpaid month first. If a tenant owes for June and July
+                    and pays one month's rent, it clears June. Pay more than is owed and the
+                    extra is held as credit against next month. The payment dialog shows you
+                    exactly which months a payment will clear before you save it.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="help-3">
                   <AccordionTrigger>What should I export at month-end?</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground">
-                    Export Summary + Operations Pack for management review. Export Statement for detailed
-                    transaction evidence. Export Loan Pack when sharing with lenders.
+                    The Operations Pack — rent roll, arrears, every payment and every cost for
+                    the month. If you are applying for a loan, use the Lender Pack instead: it
+                    covers twelve months and shows your average monthly net income, which is
+                    what a bank asks for.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="help-mpesa">
+                  <AccordionTrigger>How do I record payments from M-Pesa?</AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Copy the confirmation messages from your phone and paste them into "Record
+                    payments from M-Pesa" on the Dashboard. Each one is matched to a tenant by
+                    phone number, and you confirm every row before anything is saved. You can
+                    paste several at once, and outgoing payments or airtime purchases are
+                    ignored. Keja-Connect does not connect to M-Pesa directly.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="help-duplicate">
+                  <AccordionTrigger>What if I record the same payment twice?</AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    If you entered the M-Pesa code, it will be refused and you will be told when
+                    it was first recorded. Without a code there is nothing to match on, so enter
+                    the code whenever you have it.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="help-moveout">
+                  <AccordionTrigger>A tenant is moving out. Delete them?</AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Use Move Out, not Delete. Moving out keeps their payment history, stops
+                    billing them, and frees the unit. Deleting erases every charge and payment
+                    on their record, which changes the totals in months you have already closed.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="help-5">

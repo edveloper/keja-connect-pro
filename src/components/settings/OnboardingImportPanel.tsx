@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { normalizeKenyanPhone } from "@/lib/phone-validation";
+import { buildRentCharges } from "@/lib/charges";
+import { currentDateKey, toDateKey, toMonthKey, parseDateKey } from "@/lib/month";
 
 type DatasetType = "tenants" | "units" | "properties";
 type RawRow = Record<string, unknown>;
@@ -45,10 +47,15 @@ const parseBoolean = (value: string, fallback = false) => {
   return fallback;
 };
 const parseDate = (value: string) => {
-  if (!value) return new Date().toISOString().slice(0, 10);
-  const maybe = new Date(value);
-  if (Number.isNaN(maybe.getTime())) return new Date().toISOString().slice(0, 10);
-  return maybe.toISOString().slice(0, 10);
+  if (!value) return currentDateKey();
+  // Spreadsheet dates arrive in many shapes. `YYYY-MM-DD` is parsed as a local
+  // calendar date so the day the landlord typed survives the round trip;
+  // anything else falls back to Date parsing.
+  const maybe = /^\d{4}-\d{2}-\d{2}/.test(value.trim())
+    ? parseDateKey(value.trim())
+    : new Date(value);
+  if (Number.isNaN(maybe.getTime())) return currentDateKey();
+  return toDateKey(maybe);
 };
 
 const pickSheetName = (sheetNames: string[], candidates: string[]) => {
@@ -188,37 +195,30 @@ async function createTenantAndCharges(row: TenantImportRow, unitId: string, user
   if (tenantError) throw tenantError;
 
   if (row.openingBalance > 0) {
-    await supabase.rpc("create_opening_balance_charge", {
+    const { error } = await supabase.rpc("create_opening_balance_charge", {
       p_tenant_id: tenant.id,
-      p_amount: row.openingBalance,
-      p_effective_month: row.leaseStart.slice(0, 7),
+      p_amount: Math.round(row.openingBalance),
+      p_effective_month: toMonthKey(parseDateKey(row.leaseStart)),
       p_note: "Opening balance - imported onboarding data",
     });
+    if (error) throw error;
   }
 
-  const currentMonth = new Date();
-  const start = new Date(row.leaseStart);
-  const startMonth = new Date(start.getFullYear(), start.getMonth(), 1);
-  const endMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-  const charges: Array<{ tenant_id: string; amount: number; charge_month: string; type: "rent"; note: string }> = [];
+  const charges = buildRentCharges({
+    rentAmount: row.rentAmount,
+    leaseStart: row.leaseStart,
+    isProrated: row.isProrated,
+    firstMonthOverride: row.firstMonthOverride,
+  }).map((charge) => ({
+    ...charge,
+    tenant_id: tenant.id,
+    note: `${charge.note} (imported)`,
+  }));
 
-  let cursor = new Date(startMonth);
-  let first = true;
-  while (cursor <= endMonth) {
-    const month = cursor.toISOString().slice(0, 7);
-    const amount = first && row.isProrated && row.firstMonthOverride != null ? row.firstMonthOverride : row.rentAmount;
-    charges.push({
-      tenant_id: tenant.id,
-      amount,
-      charge_month: month,
-      type: "rent",
-      note: first ? "First month rent (imported)" : "Monthly rent (imported)",
-    });
-    first = false;
-    cursor.setMonth(cursor.getMonth() + 1);
+  if (charges.length > 0) {
+    const { error } = await supabase.from("charges").insert(charges);
+    if (error) throw error;
   }
-
-  if (charges.length > 0) await supabase.from("charges").insert(charges);
 }
 
 export function OnboardingImportPanel() {

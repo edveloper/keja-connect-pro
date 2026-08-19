@@ -3,14 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
+import { getSupabaseErrorMessage } from "@/lib/supabase-errors";
 
 type RiskSnapshot = Database["public"]["Tables"]["tenant_risk_snapshots"]["Row"];
 type ReminderQueueRow = Database["public"]["Tables"]["reminder_queue"]["Row"];
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "Unexpected error";
-}
 
 async function getUserIdOrNull(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
@@ -95,7 +91,7 @@ export function useRunTenantRiskScoring() {
     onError: (error) => {
       toast({
         title: "Risk scan failed",
-        description: getErrorMessage(error),
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -123,7 +119,7 @@ export function useEnqueueRiskReminders() {
     onError: (error) => {
       toast({
         title: "Queue failed",
-        description: getErrorMessage(error),
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -215,7 +211,7 @@ export function useUpdateReminderAction() {
       }
       toast({
         title: "Reminder update failed",
-        description: getErrorMessage(error),
+        description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
     },

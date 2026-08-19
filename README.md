@@ -1,79 +1,89 @@
-# Welcome to your Lovable project
+# Keja-Connect
 
-## Project info
+Rent tracking for Kenyan landlords. Bills rent monthly, applies payments to the
+oldest arrears first, reconciles pasted M-Pesa messages, and exports the twelve
+months of income history a bank asks for.
 
-**URL**: https://lovable.dev/projects/ffcc81a7-fcb9-4068-b629-45bad3e89808
+## Running locally
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/ffcc81a7-fcb9-4068-b629-45bad3e89808) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Requires Node 18+.
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+cp .env.example .env   # then fill in your Supabase project values
+npm run dev            # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+## Scripts
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` | Typechecks, then builds for production |
+| `npm run typecheck` | `tsc --noEmit` on the app sources |
+| `npm test` | Unit tests (Vitest) |
+| `npm run test:watch` | Tests in watch mode |
+| `npm run lint` | ESLint |
 
-**Use GitHub Codespaces**
+## Environment
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Copy `.env.example` to `.env` and fill in:
 
-## What technologies are used for this project?
+| Variable | Where to find it |
+| --- | --- |
+| `VITE_SUPABASE_URL` | Supabase dashboard → Project Settings → API |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Same page. This is the anon/publishable key and is safe in the browser — row-level security is what protects the data. |
+| `VITE_SUPABASE_PROJECT_ID` | Same page |
 
-This project is built with:
+`.env` is not committed. Do not put a service-role key in it — anything prefixed
+`VITE_` is compiled into the JavaScript bundle and visible to anyone.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Database
 
-## How can I deploy this project?
+Migrations live in `supabase/migrations/` and run in filename order.
 
-Simply open [Lovable](https://lovable.dev/projects/ffcc81a7-fcb9-4068-b629-45bad3e89808) and click on Share -> Publish.
+```sh
+supabase db push
+```
 
-## Release operations
+Or paste each file into the Supabase SQL editor in order.
 
-For pre-release checks, migration order, smoke testing, and rollback guidance, use:
+`supabase/repairs/` holds one-off data-repair scripts. These are **not**
+migrations and are not run by `db push` — read `supabase/repairs/README.md`
+before running any of them.
 
-- `docs/release-checklist-phase3.md`
+### Rent billing
 
-## Can I connect a custom domain to my Lovable project?
+`generate_monthly_charges()` guarantees that every active tenant has one rent
+charge for every month from their lease start to the billing month. It is
+idempotent, and runs from two places:
 
-Yes, you can!
+- a nightly `pg_cron` job at 00:30 Africa/Nairobi
+- the app itself, once per month per user, on load
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+The app-side call is the fallback for projects where `pg_cron` is unavailable.
+If you enable `pg_cron` later, re-run the scheduling block in
+`20260817101000_recurring_billing.sql`.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Things worth knowing before changing the code
+
+**Never derive a month or date key with `toISOString()`.** It converts to UTC
+first, so in Kenya (UTC+3) local midnight on the 1st becomes 21:00 on the last
+day of the previous month, and every charge is filed one month early. Use the
+helpers in `src/lib/month.ts`. The test suite runs under `TZ=Africa/Nairobi`
+specifically so this regression fails the build.
+
+**Allocation is derived, never edited by hand.** `reallocate_tenant_payments()`
+rebuilds a tenant's allocations from scratch from their charges and payments.
+Anything that changes either side calls it. That rebuild is what makes
+overpayment credit carry forward correctly.
+
+**Money is stored as whole shillings in `INTEGER` columns.** Round at the input
+boundary; never pass a float to an RPC.
+
+**Never abbreviate money in the UI.** Use `formatKES`. `formatCompact` exists for
+chart axis ticks only.
+
+## Stack
+
+Vite · React · TypeScript · Tailwind · shadcn/ui · Supabase · Recharts · Vitest

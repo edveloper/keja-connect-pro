@@ -144,6 +144,7 @@ export type Database = {
           created_at: string
           id: string
           payment_id: string
+          tenant_id: string
         }
         Insert: {
           amount: number
@@ -151,6 +152,7 @@ export type Database = {
           created_at?: string
           id?: string
           payment_id: string
+          tenant_id: string
         }
         Update: {
           amount?: number
@@ -158,6 +160,7 @@ export type Database = {
           created_at?: string
           id?: string
           payment_id?: string
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -168,6 +171,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      landlord_settings: {
+        Row: {
+          business_name: string | null
+          created_at: string
+          pay_to: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_name?: string | null
+          created_at?: string
+          pay_to?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          business_name?: string | null
+          created_at?: string
+          pay_to?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       ops_events: {
         Row: {
@@ -394,7 +421,9 @@ export type Database = {
           opening_balance: number | null
           phone: string
           rent_amount: number
+          moved_out_on: string | null
           security_deposit: number | null
+          status: string
           unit_id: string | null
           updated_at: string
           user_id: string | null
@@ -409,7 +438,9 @@ export type Database = {
           opening_balance?: number | null
           phone: string
           rent_amount?: number
+          moved_out_on?: string | null
           security_deposit?: number | null
+          status?: string
           unit_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -424,7 +455,9 @@ export type Database = {
           opening_balance?: number | null
           phone?: string
           rent_amount?: number
+          moved_out_on?: string | null
           security_deposit?: number | null
+          status?: string
           unit_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -586,10 +619,40 @@ export type Database = {
         }
         Returns: number
       }
+      archive_tenant: {
+        Args: {
+          p_moved_out_on?: string | null
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      delete_payment: {
+        Args: {
+          p_payment_id: string
+        }
+        Returns: undefined
+      }
+      find_payment_by_mpesa_code: {
+        Args: {
+          p_mpesa_code: string
+        }
+        Returns: {
+          amount: number
+          payment_date: string
+          payment_id: string
+          tenant_id: string
+          tenant_name: string
+        }[]
+      }
+      generate_monthly_charges: {
+        Args: {
+          p_month_key?: string | null
+        }
+        Returns: number
+      }
       get_financial_statements: {
         Args: {
           p_month?: string | null
-          p_user_id?: string | null
         }
         Returns: {
           balance: number
@@ -600,6 +663,13 @@ export type Database = {
           total_collected: number
           unit_number: string
         }[]
+      }
+      sync_tenant_charges: {
+        Args: {
+          p_reprice_from?: string | null
+          p_tenant_id: string
+        }
+        Returns: number
       }
       insert_payment_with_allocations: {
         Args: {

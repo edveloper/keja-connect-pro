@@ -5,11 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "An error occurred";
-}
+import { getSupabaseErrorMessage } from "@/lib/supabase-errors";
 
 export default function AuthPage() {
   const [loading, setLoading] = useState(false);
@@ -33,7 +29,7 @@ export default function AuthPage() {
         toast.success("Welcome back to Keja Connect!");
       }
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error));
+      toast.error(getSupabaseErrorMessage(error));
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { currentDateKey } from "@/lib/month";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,8 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { normalizeKenyanPhone } from "@/lib/phone-validation";
+import { isValidKenyanPhone, normalizeKenyanPhone } from "@/lib/phone-validation";
 import { useUnits } from "@/hooks/useUnits";
+import { useTenants } from "@/hooks/useTenants";
 import { useUserProperties } from "@/hooks/useTenants";
 import { toast } from "@/hooks/use-toast";
 import { User, Phone, Plus, Calendar as CalendarIcon } from "lucide-react";
@@ -44,6 +46,12 @@ interface TenantFormProps {
   isLoading?: boolean;
 }
 
+/** Parse a money input into whole shillings, defaulting to zero. */
+function toShillings(value: string): number {
+  const parsed = Math.round(Number(value));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 interface UnitOption {
   id: string;
   property_id: string;
@@ -63,7 +71,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
     tenant?.security_deposit != null ? String(tenant.security_deposit) : "0"
   );
   const [leaseStart, setLeaseStart] = useState<string>(
-    tenant?.lease_start ?? new Date().toISOString().split("T")[0]
+    tenant?.lease_start ?? currentDateKey()
   );
 
   const [isProrated, setIsProrated] = useState<boolean>(tenant?.is_prorated ?? false);
@@ -78,19 +86,53 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
 
   const { data: properties } = useUserProperties();
   const { data: allUnits } = useUnits();
+  const { data: allTenants } = useTenants();
+
+  // Units already occupied by someone else. Two tenants on one unit used to be
+  // possible, and the dashboard would then silently hide one of them.
+  const occupiedUnitIds = useMemo(() => {
+    const taken = new Set<string>();
+    (allTenants ?? []).forEach((t) => {
+      if (t.unit_id && t.id !== tenant?.id) taken.add(t.unit_id);
+    });
+    return taken;
+  }, [allTenants, tenant?.id]);
 
   const filteredUnits = useMemo(() => {
     if (!selectedPropertyId || !allUnits) return [];
-    const units = allUnits as unknown as UnitOption[];
-    return units.filter((u) => u.property_id === selectedPropertyId && (u as unknown as { is_available?: boolean }).is_available !== false);
-  }, [selectedPropertyId, allUnits]);
+    const units = allUnits as unknown as Array<UnitOption & { is_available?: boolean }>;
+    return units.filter((u) => {
+      if (u.property_id !== selectedPropertyId) return false;
+      // Always keep the unit this tenant already occupies, even if it was
+      // marked unavailable, so editing them does not blank their own unit.
+      if (u.id === tenant?.unit_id) return true;
+      if (u.is_available === false) return false;
+      return !occupiedUnitIds.has(u.id);
+    });
+  }, [selectedPropertyId, allUnits, occupiedUnitIds, tenant?.unit_id]);
+
+  const phoneError = useMemo(() => {
+    const value = phone.trim();
+    if (value === "") return null;
+    return isValidKenyanPhone(value)
+      ? null
+      : "Enter a Kenyan mobile number, e.g. 0712345678.";
+  }, [phone]);
+
+  const rentError = useMemo(() => {
+    if (rentAmount.trim() === "") return null;
+    const value = Number(rentAmount);
+    if (!Number.isFinite(value) || value < 0) return "Enter a valid amount.";
+    return null;
+  }, [rentAmount]);
 
   const canSave = useMemo(() => {
     if (!name.trim()) return false;
     if (!unitId) return false;
     if (isProrated && firstMonthOverride.trim() === "") return false;
+    if (phoneError || rentError) return false;
     return true;
-  }, [name, unitId, isProrated, firstMonthOverride]);
+  }, [name, unitId, isProrated, firstMonthOverride, phoneError, rentError]);
 
   const handleSubmit = (e: React.FormEvent, addAnother = false) => {
     e.preventDefault();
@@ -122,22 +164,29 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
       return;
     }
 
-    const normalizedPhone = phone ? normalizeKenyanPhone(phone) : "";
+    if (phoneError) {
+      toast({
+        title: "Check the phone number",
+        description: phoneError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const normalizedPhone = phone.trim() ? normalizeKenyanPhone(phone) : "";
 
     const payload: TenantFormPayload = {
       name: name.trim(),
       phone: normalizedPhone,
-      rent_amount: rentAmount !== "" ? parseFloat(rentAmount) : 0,
+      // Whole shillings only: the ledger columns are INTEGER, so a fractional
+      // value would be rejected or silently truncated by the database.
+      rent_amount: toShillings(rentAmount),
       unit_id: unitId,
-      opening_balance: openingBalance !== "" ? parseFloat(openingBalance) : 0,
-      security_deposit: securityDeposit !== "" ? parseFloat(securityDeposit) : 0,
+      opening_balance: toShillings(openingBalance),
+      security_deposit: toShillings(securityDeposit),
       lease_start: leaseStart,
       is_prorated: Boolean(isProrated),
-      first_month_override: isProrated
-        ? firstMonthOverride !== ""
-          ? parseFloat(firstMonthOverride)
-          : null
-        : null,
+      first_month_override: isProrated ? toShillings(firstMonthOverride) || null : null,
     };
 
     onSubmit(payload, addAnother);
@@ -160,15 +209,29 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
             />
           </div>
 
-          <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-9 h-11"
-              type="tel"
-              placeholder="Phone (optional)"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
+          <div className="space-y-1">
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9 h-11"
+                type="tel"
+                inputMode="tel"
+                placeholder="Phone (optional)"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                aria-invalid={Boolean(phoneError)}
+                aria-describedby={phoneError ? "tenant-phone-error" : undefined}
+              />
+            </div>
+            {phoneError ? (
+              <p id="tenant-phone-error" className="text-[11px] text-destructive">
+                {phoneError}
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Used to match M-Pesa payments and send reminders.
+              </p>
+            )}
           </div>
 
           <div className="surface-panel p-3 space-y-3">
@@ -203,7 +266,15 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-[10px] font-bold">Monthly Rent</Label>
-              <Input type="number" value={rentAmount} onChange={(e) => setRentAmount(e.target.value)} required />
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={rentAmount}
+                onChange={(e) => setRentAmount(e.target.value)}
+                required
+              />
             </div>
 
             <div className="space-y-1">
@@ -252,6 +323,11 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Unassigned</SelectItem>
+                {selectedPropertyId && filteredUnits.length === 0 && (
+                  <div className="px-2 py-3 text-xs text-muted-foreground">
+                    Every unit in this property is already occupied.
+                  </div>
+                )}
                 {filteredUnits.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
                     Unit {u.unit_number}

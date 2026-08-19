@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { currentDateKey } from "@/lib/month";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,7 +52,7 @@ export function ExpenseForm({
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [expenseDate, setExpenseDate] = useState(currentDateKey());
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   
@@ -77,7 +78,7 @@ export function ExpenseForm({
     setCategoryId("");
     setAmount("");
     setDescription("");
-    setExpenseDate(new Date().toISOString().slice(0, 10));
+    setExpenseDate(currentDateKey());
   };
 
   const handleCreateCategory = () => {

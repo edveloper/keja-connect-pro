@@ -7,7 +7,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Keja-Connect Design System - Clean, Modern, Mobile-first */
+/* Keja-Connect design tokens.
+ *
+ * Light only, deliberately. A full set of dark tokens used to live here but
+ * nothing ever applied the `dark` class, and components across the app hardcode
+ * light values (bg-slate-50, text-blue-900) that would break under it. Before
+ * reintroducing dark mode, move those components onto the tokens below. */
 
 @layer base {
   :root {
@@ -77,66 +82,8 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-
-  .dark {
-    --background: 220 20% 7%;
-    --foreground: 210 20% 98%;
-
-    --card: 220 20% 10%;
-    --card-foreground: 210 20% 98%;
-
-    --popover: 220 20% 10%;
-    --popover-foreground: 210 20% 98%;
-
-    --primary: 160 70% 45%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 220 15% 15%;
-    --secondary-foreground: 210 20% 95%;
-
-    --muted: 220 15% 18%;
-    --muted-foreground: 220 10% 55%;
-
-    --accent: 160 30% 15%;
-    --accent-foreground: 160 70% 55%;
-
-    --success: 152 70% 48%;
-    --success-foreground: 0 0% 100%;
-
-    --warning: 38 90% 50%;
-    --warning-foreground: 30 100% 10%;
-
-    --destructive: 0 65% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 15% 18%;
-    --input: 220 15% 18%;
-    --ring: 160 70% 45%;
-
-    --nav-background: 220 20% 9%;
-    --nav-foreground: 220 10% 55%;
-    --nav-active: 160 70% 45%;
-
-    --gradient-primary: linear-gradient(135deg, hsl(160 70% 45%), hsl(170 65% 40%));
-    --gradient-card: linear-gradient(180deg, hsl(220 20% 10%), hsl(220 20% 9%));
-    --gradient-surface: linear-gradient(135deg, hsl(220 20% 7%), hsl(220 15% 6%));
-
-    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.2);
-    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.4);
-    --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.2), 0 4px 12px hsl(0 0% 0% / 0.15);
-    --shadow-nav: 0 -1px 3px hsl(0 0% 0% / 0.2);
-
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
 }
+
 
 @layer base {
   * {
@@ -149,13 +96,18 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  html {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
     font-feature-settings: "rlig" 1, "calt" 1;
     background-image:
       radial-gradient(circle at 5% 0%, hsl(var(--primary) / 0.12), transparent 34%),
       radial-gradient(circle at 95% 5%, hsl(210 90% 60% / 0.1), transparent 36%),
-      linear-gradient(180deg, hsl(var(--background)), hsl(210 24% 97%));
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--secondary)));
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -191,7 +143,12 @@
   }
 
   .app-shell {
-    @apply relative overflow-hidden;
+    position: relative;
+    /* `clip` rather than `hidden`: both stop the decorative blur circles from
+     * widening the page, but `overflow: hidden` turns this element into a
+     * scroll container, which silently stops the sticky page header from
+     * sticking. `clip` does not. */
+    overflow-x: clip;
   }
 
   .surface-panel {

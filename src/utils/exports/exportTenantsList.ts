@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { currentDateKey } from "@/lib/month";
 
 export interface TenantExportRow {
   tenant_name: string;
@@ -30,5 +31,5 @@ export async function exportTenantsListExcel(rows: TenantExportRow[]) {
   const sheet = XLSX.utils.json_to_sheet(exportRows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "Tenants");
-  XLSX.writeFile(workbook, `tenants_list_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  XLSX.writeFile(workbook, `tenants_list_${currentDateKey()}.xlsx`);
 }

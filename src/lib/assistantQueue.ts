@@ -1,3 +1,5 @@
+const COLLECTION_TARGET_PCT = 70;
+
 export type AssistantPriority = "high" | "medium" | "low";
 
 export interface AssistantActionItem {
@@ -55,12 +57,15 @@ export function buildAssistantQueue(params: BuildAssistantQueueParams): Assistan
     });
   }
 
-  if (params.collectionRate < 70 && params.occupiedUnits > 0) {
+  // 70% of billed rent by month-end. Below that, arrears are compounding faster
+  // than they are being cleared, which is the point at which chasing stops being
+  // routine and starts being urgent.
+  if (params.collectionRate < COLLECTION_TARGET_PCT && params.occupiedUnits > 0) {
     items.push({
       id: "collection-efficiency",
       priority: "medium",
       title: "Collections below target",
-      detail: `Collection efficiency is ${params.collectionRate.toFixed(0)}%, below a 70% target.`,
+      detail: `Collection is at ${params.collectionRate.toFixed(0)}% of rent billed, below the ${COLLECTION_TARGET_PCT}% target.`,
       ctaLabel: "Review Reports",
       route: "/reports",
     });

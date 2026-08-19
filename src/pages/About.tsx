@@ -1,129 +1,144 @@
 import { Helmet } from "react-helmet-async";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, ShieldCheck, Users, MapPin, BarChart3, Wallet, FileSpreadsheet, Landmark } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 export default function About() {
+  const navigate = useNavigate();
+
   return (
     <>
       <Helmet>
-        <title>About Keja-Connect | Built for Kenyan Landlords</title>
+        <title>About Keja-Connect | Rent Tracking for Kenyan Landlords</title>
         <meta
           name="description"
-          content="Learn about Keja-Connect, a property management platform built to help Kenyan landlords manage tenants, rent payments, and expenses with confidence."
+          content="Why Keja-Connect exists, what it does, and what it deliberately does not do. Built by one developer for Kenyan landlords managing their own units."
         />
       </Helmet>
 
-      <PageContainer
-        title="About Keja-Connect"
-        subtitle="Built for practical property management"
-      >
-        <div className="space-y-5">
-          <Card className="surface-panel">
-            <CardContent className="pt-6">
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Keja-Connect is a landlord-focused platform designed for the Kenyan rental market.
-                It brings property setup, tenant records, rent collection, and expense tracking into
-                one workflow so owners can run operations with less admin overhead and clearer numbers.
+      <PageContainer title="About" subtitle="What this is, and what it isn't">
+        <div className="space-y-5 pb-24">
+          <Card>
+            <CardContent className="pt-6 space-y-4 text-sm leading-relaxed">
+              {/*
+                TODO (Eddie): replace this paragraph with your own reason for
+                building it — the specific frustration, the number of units, the
+                estate. One true sentence about where this came from will do
+                more for trust than anything else on the page.
+              */}
+              <p>
+                Most Kenyan landlords run their units from a notebook or a WhatsApp thread.
+                It works until a tenant is three months behind and nobody can agree on what
+                was paid or when. Keja-Connect exists to keep that record straight.
+              </p>
+              <p className="text-muted-foreground">
+                It is built and maintained by one developer, Eddie Ezekiel Ochieng. If you
+                find something wrong, you are writing to the person who can fix it.
               </p>
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card className="elevate">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Building2 className="h-4 w-4 text-primary" />
-                  What We Solve
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Spreadsheets, fragmented payment logs, and inconsistent reporting are replaced with a
-                single source of truth for rental operations.
-              </CardContent>
-            </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <h2 className="font-bold text-sm mb-3">What it does</h2>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <span className="font-semibold">Bills rent automatically.</span>{" "}
+                  <span className="text-muted-foreground">
+                    Every active tenant is charged on the 1st, whether or not you open the
+                    app. Arrears carry forward month to month.
+                  </span>
+                </li>
+                <li>
+                  <span className="font-semibold">Records payments from M-Pesa.</span>{" "}
+                  <span className="text-muted-foreground">
+                    Paste the confirmation messages from your phone. Each one is matched to a
+                    tenant by phone number and you confirm before anything is saved. The same
+                    code cannot be recorded twice.
+                  </span>
+                </li>
+                <li>
+                  <span className="font-semibold">Applies money to the oldest debt first.</span>{" "}
+                  <span className="text-muted-foreground">
+                    A part payment clears the oldest unpaid month, not the current one. Pay
+                    ahead and the credit is carried forward to next month's rent.
+                  </span>
+                </li>
+                <li>
+                  <span className="font-semibold">Shows each tenant's full statement.</span>{" "}
+                  <span className="text-muted-foreground">
+                    Month by month: billed, paid, balance carried forward — and which months
+                    each payment actually settled. Enough to end an argument.
+                  </span>
+                </li>
+                <li>
+                  <span className="font-semibold">Sends reminders on WhatsApp.</span>{" "}
+                  <span className="text-muted-foreground">
+                    The message is written for you with the amount and your paybill. It sends
+                    from your own number, so it lands in a conversation the tenant recognises.
+                  </span>
+                </li>
+                <li>
+                  <span className="font-semibold">Exports what a bank asks for.</span>{" "}
+                  <span className="text-muted-foreground">
+                    Twelve months of collections, costs and average monthly net income, as
+                    Excel or a printable PDF.
+                  </span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
 
-            <Card className="elevate">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Users className="h-4 w-4 text-primary" />
-                  Who It Is For
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Individual landlords, small portfolios, and property managers who need accurate records
-                without a complex enterprise setup.
-              </CardContent>
-            </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <h2 className="font-bold text-sm mb-3">What it doesn't do</h2>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  It does not connect to M-Pesa directly. You paste the messages; there is no
+                  Daraja integration and no automatic bank feed.
+                </li>
+                <li>
+                  It does not collect rent on your behalf, hold your money, or touch your
+                  paybill.
+                </li>
+                <li>
+                  It does not give tenants a login. This is a tool for the landlord, and
+                  everything a tenant sees comes from you.
+                </li>
+                <li>
+                  It is not accounting software. It tracks rent and property costs — not
+                  payroll, VAT, or anything you would file with KRA.
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
 
-            <Card className="elevate">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Wallet className="h-4 w-4 text-primary" />
-                  Financial Clarity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Monitor collections, arrears, overpayments, and expenses in real time, then export
-                summaries, statements, operations packs, and loan packs for easier month-end review.
-              </CardContent>
-            </Card>
-
-            <Card className="elevate">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  Local Context
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                The product reflects common Kenya-based rental workflows, including mobile-money aligned
-                collection practices and flexible monthly payment behavior.
-              </CardContent>
-            </Card>
-
-            <Card className="elevate">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileSpreadsheet className="h-4 w-4 text-primary" />
-                  Faster Onboarding
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Import existing spreadsheets with column mapping, so landlords can migrate from
-                statements and legacy sheets without retyping data.
-              </CardContent>
-            </Card>
-
-            <Card className="elevate">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Landmark className="h-4 w-4 text-primary" />
-                  Lender-Ready Documents
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Export loan-ready evidence with rent rolls, arrears, income and cost histories in
-                structured formats for financiers and auditors.
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="surface-panel">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                Product Principles
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>Reliable records over guesswork.</p>
-              <p>Simple workflows over unnecessary complexity.</p>
-              <p>Actionable reporting over raw data dumps.</p>
-              <p className="pt-1 flex items-center gap-2 text-foreground font-medium">
-                <BarChart3 className="h-4 w-4 text-primary" />
-                Keja-Connect helps you stay operationally clear, month after month.
+          <Card>
+            <CardContent className="pt-6">
+              <h2 className="font-bold text-sm mb-3">Your data</h2>
+              <p className="text-sm text-muted-foreground">
+                Every record is scoped to your account at the database level, not just in the
+                app — no other landlord can read or change your tenants, payments or figures
+                even if they go looking. Your data is never sold or shared.
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => navigate("/privacy")}
+              >
+                Read the privacy policy
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                Something wrong, missing, or slower than it should be?
+              </p>
+              <Button onClick={() => navigate("/contact")}>Get in touch</Button>
             </CardContent>
           </Card>
         </div>

@@ -6,7 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
-import { MigrationRunner } from "@/components/migration/MigrationRunner";
+
+import { currentMonthKey } from "@/lib/month";
 
 // Layout
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -46,6 +47,38 @@ function AppBootScreen() {
   );
 }
 
+/**
+ * Makes sure the signed-in landlord has a rent charge for every month up to
+ * now, then stays out of the way.
+ *
+ * A nightly pg_cron job does this for everyone; this is the fallback that keeps
+ * billing correct if the extension is unavailable, and it closes the gap
+ * between midnight and the landlord opening the app on the 1st.
+ */
+function MonthlyBilling({ session }: { session: Session | null }) {
+  useEffect(() => {
+    if (!session) return;
+
+    const billedKey = `keja:billed:${session.user.id}`;
+    const thisMonth = currentMonthKey();
+    if (localStorage.getItem(billedKey) === thisMonth) return;
+
+    supabase
+      .rpc("generate_monthly_charges", { p_month_key: null })
+      .then(({ error }) => {
+        if (error) {
+          console.error("Monthly rent billing failed:", error.message);
+          return;
+        }
+        localStorage.setItem(billedKey, thisMonth);
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["tenant-ledger"] });
+      });
+  }, [session]);
+
+  return null;
+}
+
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,15 +106,15 @@ const App = () => {
         <Sonner position="top-center" />
 
         <BrowserRouter>
+          <MonthlyBilling session={session} />
           <Routes>
-            {/* 🌍 PUBLIC ROUTES (SEO / TRUST) */}
+            {/* Public pages. Reachable signed out so the app can be found and trusted. */}
             <Route path="/about" element={<About />} />
             <Route path="/help" element={<Help />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/auth" element={!session ? <AuthPage /> : <Navigate to="/" replace />} />
 
-            {/* 🔐 PRIVATE APP ROUTES */}
             {session ? (
               <>
                 <Route path="/" element={<Dashboard />} />
@@ -90,17 +123,22 @@ const App = () => {
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/migrate" element={<MigrationRunner />} />
               </>
             ) : (
-              <Route path="/" element={<Navigate to="/auth" replace />} />
+              // Send signed-out visitors to the login page rather than a 404.
+              <>
+                <Route path="/" element={<Navigate to="/auth" replace />} />
+                <Route path="/properties" element={<Navigate to="/auth" replace />} />
+                <Route path="/tenants" element={<Navigate to="/auth" replace />} />
+                <Route path="/expenses" element={<Navigate to="/auth" replace />} />
+                <Route path="/reports" element={<Navigate to="/auth" replace />} />
+                <Route path="/settings" element={<Navigate to="/auth" replace />} />
+              </>
             )}
 
-            {/* ❌ FALLBACK */}
             <Route path="*" element={<NotFound />} />
           </Routes>
 
-          {/* Bottom nav only when logged in */}
           {session && <BottomNav />}
         </BrowserRouter>
       </TooltipProvider>

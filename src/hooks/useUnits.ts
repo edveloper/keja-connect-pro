@@ -3,16 +3,12 @@ import { useQuery, useMutation, useQueryClient, UseMutationResult } from '@tanst
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
+import { getSupabaseErrorMessage } from "@/lib/supabase-errors";
 
 type Unit = Database['public']['Tables']['units']['Row'];
 type Property = Database['public']['Tables']['properties']['Row'];
 type CreateUnitInput = { property_id: string; unit_number: string };
 type BulkCreateUnitsInput = CreateUnitInput[];
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return 'Unexpected error';
-}
 
 type UnitWithProperty = Unit & {
   properties?: {
@@ -113,7 +109,7 @@ export function useCreateUnit(): UseMutationResult<Unit, Error, CreateUnitInput,
       toast({ title: 'Success', description: 'Unit created successfully' });
     },
     onError: (error: unknown) => {
-      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error', description: getSupabaseErrorMessage(error), variant: 'destructive' });
     },
   });
 }
@@ -159,7 +155,7 @@ export function useBulkCreateUnits(): UseMutationResult<Unit[], Error, BulkCreat
       toast({ title: 'Success', description: `${data.length} units created` });
     },
     onError: (error: unknown) => {
-      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error', description: getSupabaseErrorMessage(error), variant: 'destructive' });
     },
   });
 }
@@ -200,7 +196,7 @@ export function useDeleteUnit(): UseMutationResult<void, Error, string, unknown>
       toast({ title: 'Success', description: 'Unit deleted' });
     },
     onError: (error: unknown) => {
-      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error', description: getSupabaseErrorMessage(error), variant: 'destructive' });
     },
   });
 }
@@ -251,7 +247,7 @@ export function useUpdateUnit(): UseMutationResult<
       toast({ title: 'Success', description: 'Unit updated' });
     },
     onError: (error: unknown) => {
-      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Error', description: getSupabaseErrorMessage(error), variant: 'destructive' });
     },
   });
 }

@@ -36,7 +36,7 @@ export default function Contact() {
           <Card className="surface-panel">
             <CardContent className="pt-6 text-sm text-muted-foreground leading-relaxed">
               If you run into issues, need product help, or want to suggest an improvement, use the options
-              below. Clear feedback helps us improve Keja-Connect faster.
+              below. Every message goes straight to the person who builds it.
             </CardContent>
           </Card>
 
@@ -144,8 +144,9 @@ export default function Contact() {
                 <AccordionItem value="contact-2">
                   <AccordionTrigger>How quickly can I expect a response?</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground">
-                    Response times vary, but clear reports with reproducible steps are usually resolved
-                    faster than generic issue descriptions.
+                    Keja-Connect is built by one person, so WhatsApp usually gets a reply the
+                    same day and email within two or three. If something is stopping you
+                    recording rent, say so in the first line and it goes to the front.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="contact-3">

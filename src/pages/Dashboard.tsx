@@ -1,4 +1,3 @@
-// src/pages/Dashboard.tsx (Updated to include auto-migration)
 import { PageContainer } from "@/components/layout/PageContainer";
 import UnitCard from "@/components/dashboard/UnitCard";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -11,16 +10,25 @@ import { formatKES } from "@/lib/number-formatter";
 import { buildAssistantQueue } from "@/lib/assistantQueue";
 import { AssistantPanel } from "@/components/intelligence/AssistantPanel";
 import {
-  Building2, AlertTriangle, Banknote,
-  Wallet, ChevronDown, Home, DoorOpen, ChevronLeft,
-  ChevronRight, ShieldCheck, Calendar
+  Building2,
+  AlertTriangle,
+  Banknote,
+  Wallet,
+  ChevronDown,
+  Home,
+  DoorOpen,
+  ShieldCheck,
+  Smartphone,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
-import { format, addMonths, subMonths } from "date-fns";
+
 import { useNavigate } from "react-router-dom";
+import { currentMonthKey, toMonthKey } from "@/lib/month";
+import { MonthSelector } from "@/components/layout/MonthSelector";
+import MpesaReconcileDialog from "@/components/payments/MpesaReconcileDialog";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -29,7 +37,7 @@ export default function Dashboard() {
   const { data, isLoading } = useDashboardData(selectedDate);
   const { data: thisMonthData } = useDashboardData(new Date());
   const { data: totalExpenses, isLoading: expensesLoading } = useTotalExpenses(selectedDate);
-  const riskMonthKey = selectedDate ? format(selectedDate, "yyyy-MM") : new Date().toISOString().slice(0, 7);
+  const riskMonthKey = selectedDate ? toMonthKey(selectedDate) : currentMonthKey();
   const { summary: riskSummary } = useRiskSummary(riskMonthKey);
   const { data: reminderQueue = [] } = useReminderQueue(riskMonthKey);
 
@@ -39,8 +47,8 @@ export default function Dashboard() {
 
   const [selectedUnit, setSelectedUnit] = useState<DashboardUnit | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [reconcileOpen, setReconcileOpen] = useState(false);
 
-  const dateLabel = selectedDate ? format(selectedDate, "MMMM yyyy") : "All-Time Overview";
 
   const naturalSort = (a: DashboardUnit, b: DashboardUnit) =>
     a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true, sensitivity: 'base' });
@@ -65,12 +73,11 @@ export default function Dashboard() {
     });
   }, [occupiedUnits]);
 
-  const expectedRent = useMemo(
-    () => occupiedUnits.reduce((sum, unit) => sum + (unit.rent_amount || 0), 0),
-    [occupiedUnits]
-  );
-  const totalCollected = data?.stats.totalAllocated || 0;
-  const collectionRate = expectedRent > 0 ? (totalCollected / expectedRent) * 100 : 0;
+  // Applied against billed, matching the Reports page. Measuring collections
+  // against the rent roll instead double-counted arrears and could exceed 100%.
+  const billed = data?.stats.totalCharges || 0;
+  const collected = data?.stats.totalAllocated || 0;
+  const collectionRate = billed > 0 ? (collected / billed) * 100 : 0;
   const pendingReminders = reminderQueue.filter((r) => r.status === "pending").length;
   const topOverdueTenant = useMemo(
     () => [...occupiedUnits].sort((a, b) => b.balance - a.balance).find((u) => (u.balance || 0) > 0),
@@ -108,45 +115,21 @@ export default function Dashboard() {
     setDialogOpen(true);
   }
 
-  const isLoadingOrMigrating = isLoading;
-
   return (
     <PageContainer title="Dashboard" subtitle="Property Overview">
-      {/* --- DATE SELECTOR --- */}
-      <div className="surface-panel flex items-center justify-between mb-6 p-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setSelectedDate(prev => prev ? subMonths(prev, 1) : new Date())}
-        >
-          <ChevronLeft className="h-5 w-5 text-slate-400" />
-        </Button>
+      <MonthSelector value={selectedDate} onChange={setSelectedDate} />
 
-        <div className="flex flex-col items-center text-center">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5 text-primary" />
-            <h2 className="font-bold text-sm sm:text-base text-foreground">{dateLabel}</h2>
-          </div>
-          <button
-            onClick={() => setSelectedDate(selectedDate ? null : new Date())}
-            className="text-[10px] text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline"
-          >
-            {selectedDate ? "Switch to All-Time" : "Back to Monthly View"}
-          </button>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setSelectedDate(prev => prev ? addMonths(prev, 1) : new Date())}
-        >
-          <ChevronRight className="h-5 w-5 text-slate-400" />
+      <div className="mb-6">
+        <Button className="w-full h-12" onClick={() => setReconcileOpen(true)}>
+          <Smartphone className="h-4 w-4 mr-2" />
+          Record payments from M-Pesa
         </Button>
       </div>
 
-      {/* --- STATS GRID --- */}
+      {/* Rent roll for the period. Billed = Collected + Owed, so the three
+          figures reconcile against each other on screen. */}
       <div className="grid grid-cols-2 gap-4 mb-8">
-        {isLoadingOrMigrating || expensesLoading ? (
+        {isLoading || expensesLoading ? (
           <>
             <Skeleton className="h-24 rounded-xl" />
             <Skeleton className="h-24 rounded-xl" />
@@ -157,22 +140,22 @@ export default function Dashboard() {
         ) : (
           <>
             <StatsCard
-              label="Occupied"
-              value={`${data?.stats.occupiedUnits}/${data?.stats.totalUnits}`}
-              icon={Building2}
-              onClick={() => navigate("/tenants")}
+              label="Rent Billed"
+              value={formatKES(data?.stats.totalCharges || 0)}
+              icon={Banknote}
+              onClick={() => navigate("/reports")}
             />
 
             <StatsCard
-              label="Collections"
+              label="Collected"
               value={formatKES(data?.stats.totalAllocated || 0)}
-              icon={Banknote}
+              icon={Home}
               variant="success"
               onClick={() => navigate("/reports")}
             />
 
             <StatsCard
-              label="Outstanding"
+              label="Still Owed"
               value={formatKES(data?.stats.totalBalance || 0)}
               icon={AlertTriangle}
               variant={(data?.stats.totalBalance || 0) > 0 ? "danger" : "success"}
@@ -180,7 +163,7 @@ export default function Dashboard() {
             />
 
             <StatsCard
-              label={selectedDate ? "Period Expenses" : "All-Time Expenses"}
+              label={selectedDate ? "Expenses" : "All-Time Expenses"}
               value={formatKES(totalExpenses || 0)}
               icon={Wallet}
               variant="danger"
@@ -189,20 +172,25 @@ export default function Dashboard() {
 
             <div className="col-span-2">
               <StatsCard
-                label="Total Security Deposits Held"
-                value={formatKES(data?.stats.totalDeposits || 0)}
-                icon={ShieldCheck}
-                className="bg-blue-50/80 text-blue-900 border-blue-100 shadow-sm"
+                label="Units occupied"
+                value={`${data?.stats.occupiedUnits ?? 0} of ${data?.stats.totalUnits ?? 0}`}
+                hint={`${upToDateThisMonth} of ${occupiedThisMonth} tenants up to date this month`}
+                icon={Building2}
+                variant={
+                  occupiedThisMonth > 0 && upToDateThisMonth === occupiedThisMonth
+                    ? "success"
+                    : "default"
+                }
                 onClick={() => navigate("/tenants")}
               />
             </div>
 
             <div className="col-span-2">
               <StatsCard
-                label="Up to Date (This Month)"
-                value={`${upToDateThisMonth}/${occupiedThisMonth}`}
-                icon={Home}
-                variant={occupiedThisMonth > 0 && upToDateThisMonth === occupiedThisMonth ? "success" : "default"}
+                label="Security Deposits Held"
+                value={formatKES(data?.stats.totalDeposits || 0)}
+                icon={ShieldCheck}
+                className="bg-accent text-accent-foreground border-accent shadow-sm"
                 onClick={() => navigate("/tenants")}
               />
             </div>
@@ -210,10 +198,10 @@ export default function Dashboard() {
         )}
       </div>
 
-      {!isLoadingOrMigrating ? (
+      {!isLoading ? (
         <div className="mb-8">
           <Collapsible open={assistantOpen} onOpenChange={setAssistantOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-slate-50 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10 text-primary">
                   <ShieldCheck className="h-4 w-4" />
@@ -223,7 +211,7 @@ export default function Dashboard() {
                   {assistantActions.length}
                 </span>
               </div>
-              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${assistantOpen ? "rotate-180" : ""}`} />
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${assistantOpen ? "rotate-180" : ""}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3">
               <AssistantPanel
@@ -244,20 +232,20 @@ export default function Dashboard() {
 
       {/* --- UNIT LISTS --- */}
       <div className="space-y-4">
-        {isLoadingOrMigrating ? (
+        {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
           </div>
         ) : allUnits.length === 0 ? (
           <div className="text-center py-12 px-6 bg-card rounded-2xl border border-dashed border-border">
-            <Building2 className="h-8 w-8 text-slate-300 mx-auto mb-4" />
+            <Building2 className="h-8 w-8 text-muted-foreground/60 mx-auto mb-4" />
             <h3 className="font-semibold text-foreground mb-2">No units added yet</h3>
           </div>
         ) : (
           <>
             <Collapsible open={occupiedOpen} onOpenChange={setOccupiedOpen}>
               <CollapsibleTrigger 
-                className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-slate-50 transition-colors"
+                className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -266,7 +254,7 @@ export default function Dashboard() {
                   <span className="text-sm font-semibold">Occupied Units</span>
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{occupiedUnits.length}</span>
                 </div>
-                <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${occupiedOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${occupiedOpen ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
                 {sortedOccupied.map((unit) => (
@@ -281,16 +269,16 @@ export default function Dashboard() {
 
             <Collapsible open={vacantOpen} onOpenChange={setVacantOpen}>
               <CollapsibleTrigger 
-                className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-slate-50 transition-colors"
+                className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-slate-100 text-slate-500">
+                  <div className="p-2 rounded-lg bg-muted text-muted-foreground">
                     <DoorOpen className="h-4 w-4" />
                   </div>
                   <span className="text-sm font-semibold">Vacant Units</span>
-                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">{vacantUnits.length}</span>
+                  <span className="text-xs font-bold text-muted-foreground bg-muted px-2.5 py-1 rounded-full">{vacantUnits.length}</span>
                 </div>
-                <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${vacantOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${vacantOpen ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
                 {vacantUnits.map((unit) => (
@@ -305,6 +293,8 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      <MpesaReconcileDialog open={reconcileOpen} onOpenChange={setReconcileOpen} />
 
       {selectedUnit && (
         <RecordPaymentDialog

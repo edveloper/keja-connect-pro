@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
+import { getSupabaseErrorMessage } from "@/lib/supabase-errors";
+import { formatMonthLabel, isMonthKey } from "@/lib/month";
 
 type Props = {
   monthKey: string | null;
@@ -9,70 +11,101 @@ type Props = {
   };
 };
 
+/**
+ * The per-tenant, per-month ledger, for an accountant or auditor.
+ *
+ * Scoping is done inside the RPC from `auth.uid()`. It used to take a
+ * `p_user_id` argument, which meant any caller could read another landlord's
+ * statement by passing their id.
+ */
 export async function exportFinancialStatementExcel({ monthKey, intelligence }: Props) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.user?.id) {
-    throw new Error("Not authenticated");
-  }
-
-  const userId = session.user.id;
-
   const { data, error } = await supabase.rpc("get_financial_statements", {
     p_month: monthKey,
-    p_user_id: userId,
   });
 
   if (error) {
-    console.error("Failed to export financial statements", error);
-    if (error.code === "PGRST203") {
-      throw new Error(
-        "Export RPC is ambiguous in this database (duplicate get_financial_statements overloads). Apply the latest migration and retry."
-      );
-    }
-    throw new Error(error.message || "Failed to export financial statement");
+    throw new Error(getSupabaseErrorMessage(error));
   }
 
   const rows = Array.isArray(data) ? data : [];
 
-  const worksheet = XLSX.utils.json_to_sheet(rows);
+  if (rows.length === 0) {
+    throw new Error(
+      monthKey
+        ? `No charges or payments recorded for ${formatMonthLabel(monthKey)}.`
+        : "No charges or payments recorded yet."
+    );
+  }
+
+  // Readable headers, and a running balance so the sheet can be read top to
+  // bottom rather than reverse-engineered from raw column names.
+  const ledgerRows = rows.map((row) => ({
+    Property: row.property_name,
+    Unit: row.unit_number,
+    Tenant: row.tenant_name,
+    Month: isMonthKey(row.charge_month) ? formatMonthLabel(row.charge_month) : row.charge_month,
+    MonthKey: row.charge_month,
+    Billed: Math.round(Number(row.total_charges || 0)),
+    Paid: Math.round(Number(row.total_collected || 0)),
+    Balance: Math.round(Number(row.balance || 0)),
+  }));
+
+  const totals = ledgerRows.reduce(
+    (acc, r) => ({
+      billed: acc.billed + r.Billed,
+      paid: acc.paid + r.Paid,
+      balance: acc.balance + r.Balance,
+    }),
+    { billed: 0, paid: 0, balance: 0 }
+  );
+
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(
     workbook,
-    worksheet,
-    "Financial Statements"
+    XLSX.utils.json_to_sheet([
+      ...ledgerRows,
+      {} as (typeof ledgerRows)[number],
+      {
+        Property: "TOTAL",
+        Unit: "",
+        Tenant: "",
+        Month: monthKey && isMonthKey(monthKey) ? formatMonthLabel(monthKey) : "All time",
+        MonthKey: "",
+        Billed: totals.billed,
+        Paid: totals.paid,
+        Balance: totals.balance,
+      } as (typeof ledgerRows)[number],
+    ]),
+    "Ledger"
   );
 
-  if (intelligence) {
-    const riskRows =
-      intelligence.topRiskTenants?.map((row, index) => ({
-        Rank: index + 1,
-        Tenant: row.name,
-        Property: row.property ?? "",
-        Unit: row.unit ?? "",
-        RiskLevel: row.level,
-        RiskScore: row.score,
-      })) ?? [];
-
-    const anomalyRows =
-      intelligence.anomalies?.map((row, index) => ({
-        Index: index + 1,
-        Anomaly: row,
-      })) ?? [];
-
-    if (riskRows.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(riskRows), "Risk Insights");
-    }
-    if (anomalyRows.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(anomalyRows), "Anomalies");
-    }
+  if (intelligence?.topRiskTenants?.length) {
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(
+        intelligence.topRiskTenants.map((row, index) => ({
+          Rank: index + 1,
+          Tenant: row.name,
+          Property: row.property ?? "",
+          Unit: row.unit ?? "",
+          RiskLevel: row.level,
+          RiskScore: row.score,
+        }))
+      ),
+      "Risk"
+    );
   }
 
-  XLSX.writeFile(
-    workbook,
-    `financial_statements_${monthKey ?? "all_time"}.xlsx`
-  );
+  if (intelligence?.anomalies?.length) {
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(
+        intelligence.anomalies.map((row, index) => ({ Index: index + 1, Anomaly: row }))
+      ),
+      "Anomalies"
+    );
+  }
+
+  XLSX.writeFile(workbook, `statement_${monthKey ?? "all_time"}.xlsx`);
 }

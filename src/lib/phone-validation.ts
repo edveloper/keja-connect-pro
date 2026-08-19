@@ -7,7 +7,7 @@
  * - 254XXXXXXXXX
  */
 export function isValidKenyanPhone(phone: string): boolean {
-  const cleaned = phone.replace(/[\s\-\(\)]/g, "");
+  const cleaned = phone.replace(/[\s\-()]/g, "");
   
   // Pattern for Kenyan numbers
   const patterns = [
@@ -23,7 +23,7 @@ export function isValidKenyanPhone(phone: string): boolean {
  * Normalize phone to 07XXXXXXXX format
  */
 export function normalizeKenyanPhone(phone: string): string {
-  const cleaned = phone.replace(/[\s\-\(\)]/g, "");
+  const cleaned = phone.replace(/[\s\-()]/g, "");
   
   // Remove +254 or 254 prefix and add 0
   if (cleaned.startsWith("+254")) {

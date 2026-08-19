@@ -12,6 +12,7 @@ import {
   addMonths,
   currentMonthKey,
   formatMonthLabel,
+  monthKeyToDate,
   monthRange,
   toMonthKey,
   type MonthKey,
@@ -80,14 +81,30 @@ export function useAnnualStatement(months = 12) {
 
       if (!userId) return empty;
 
-      // Statements cover every month; payments and expenses are filtered to the
-      // window below.
-      const [statementsRes, paymentsRes, expensesRes] = await Promise.all([
-        supabase.rpc("get_financial_statements", { p_month: null }),
+      // Every query is bounded to the reporting window.
+      //
+      // This used to call get_financial_statements(null), which returns every
+      // month for every tenant since the beginning, and fetch every payment ever
+      // recorded — then throw most of it away in JavaScript. Note that the fix is
+      // a date bound and NOT a row limit: these figures are sums, so truncating
+      // rows would quietly produce wrong totals rather than a slow page.
+      const windowStart = monthKeyToDate(from).toISOString();
+      const windowEnd = monthKeyToDate(addMonths(to, 1)).toISOString();
+
+      const [chargesRes, paymentsRes, expensesRes] = await Promise.all([
+        // charges has no user_id of its own; row-level security scopes it
+        // through the owning tenant.
+        supabase
+          .from("charges")
+          .select("amount, charge_month")
+          .gte("charge_month", from)
+          .lte("charge_month", to),
         supabase
           .from("payments")
           .select("amount, payment_date")
-          .eq("user_id", userId),
+          .eq("user_id", userId)
+          .gte("payment_date", windowStart)
+          .lt("payment_date", windowEnd),
         supabase
           .from("expenses")
           .select("amount, expense_month")
@@ -96,16 +113,15 @@ export function useAnnualStatement(months = 12) {
           .lte("expense_month", to),
       ]);
 
-      if (statementsRes.error) throw statementsRes.error;
+      if (chargesRes.error) throw chargesRes.error;
       if (paymentsRes.error) throw paymentsRes.error;
       if (expensesRes.error) throw expensesRes.error;
 
       const billedByMonth = new Map<MonthKey, number>();
-      (statementsRes.data ?? []).forEach((row) => {
-        if (row.charge_month < from || row.charge_month > to) return;
+      (chargesRes.data ?? []).forEach((row) => {
         billedByMonth.set(
           row.charge_month,
-          (billedByMonth.get(row.charge_month) ?? 0) + Number(row.total_charges || 0)
+          (billedByMonth.get(row.charge_month) ?? 0) + Number(row.amount || 0)
         );
       });
 

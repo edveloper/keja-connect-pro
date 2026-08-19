@@ -104,6 +104,7 @@ export function useCreateProperty(): UseMutationResult<Property, Error, CreatePr
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       toast({ title: 'Success', description: 'Property created' });
     },
     onError: (error: unknown) => {
@@ -122,6 +123,7 @@ export function useDeleteProperty(): UseMutationResult<void, Error, string, unkn
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       queryClient.invalidateQueries({ queryKey: ['units'] });
       toast({ title: 'Success', description: 'Property removed' });
     },
@@ -169,6 +171,7 @@ export function useUpdateProperty(): UseMutationResult<Property, Error, UpdatePr
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       queryClient.invalidateQueries({ queryKey: ['units'] });
       toast({ title: 'Success', description: 'Property updated' });
     },

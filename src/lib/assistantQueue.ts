@@ -83,14 +83,27 @@ export function buildAssistantQueue(params: BuildAssistantQueueParams): Assistan
   }
 
   if (items.length === 0) {
-    items.push({
-      id: "all-clear",
-      priority: "low",
-      title: "No urgent actions",
-      detail: "Your key risk and collection signals look stable for now.",
-      ctaLabel: "View Dashboard",
-      route: "/",
-    });
+    // "Everything looks stable" is only true if there is something to be stable
+    // about. Said to a landlord with no tenants it is actively misleading.
+    items.push(
+      params.occupiedUnits === 0
+        ? {
+            id: "nothing-to-track",
+            priority: "low",
+            title: "Nothing to track yet",
+            detail: "Add a tenant and their rent will be charged automatically each month.",
+            ctaLabel: "Add a tenant",
+            route: "/tenants?new=1",
+          }
+        : {
+            id: "all-clear",
+            priority: "low",
+            title: "Nothing needs chasing",
+            detail: "Every tenant is up to date and no unit is empty.",
+            ctaLabel: "View tenants",
+            route: "/tenants",
+          }
+    );
   }
 
   return items.slice(0, 5);

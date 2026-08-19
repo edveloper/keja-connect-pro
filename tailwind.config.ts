@@ -14,6 +14,13 @@ export default {
       },
     },
     extend: {
+      fontSize: {
+        // 13 / 15 / 16 rather than Tailwind's 12 / 14 / 16.
+        // Nothing in the app should render below `xs`.
+        xs: ["0.8125rem", { lineHeight: "1.125rem" }],
+        sm: ["0.9375rem", { lineHeight: "1.375rem" }],
+        base: ["1rem", { lineHeight: "1.5rem" }],
+      },
       fontFamily: {
         sans: ["DM Sans", "system-ui", "sans-serif"],
       },
@@ -76,11 +83,11 @@ export default {
         },
       },
       borderRadius: {
+        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 2px)",
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 4px)",
-        sm: "calc(var(--radius) - 8px)",
-        xl: "calc(var(--radius) + 4px)",
-        "2xl": "calc(var(--radius) + 8px)",
+        xl: "calc(var(--radius) + 2px)",
+        "2xl": "calc(var(--radius) + 4px)",
       },
       boxShadow: {
         card: "var(--shadow-card)",

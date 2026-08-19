@@ -106,10 +106,10 @@ const tenantFields = [
   { key: "phone", label: "Phone" },
   { key: "rentAmount", label: "Rent Amount" },
   { key: "openingBalance", label: "Opening Balance / Arrears" },
-  { key: "securityDeposit", label: "Security Deposit" },
+  { key: "securityDeposit", label: "Security deposit" },
   { key: "leaseStart", label: "Lease Start Date" },
   { key: "isProrated", label: "Prorated?" },
-  { key: "firstMonthOverride", label: "First Month Charge" },
+  { key: "firstMonthOverride", label: "First month charge" },
   { key: "comments", label: "Comments / Notes" },
 ];
 
@@ -636,7 +636,7 @@ export function OnboardingImportPanel() {
             }}
           />
           <p className="text-xs text-muted-foreground">
-            Standard tabs work (`Properties`, `Units`, `Tenants`). For custom formats, use mapping below.
+            Sheets named Properties, Units or Tenants are picked up automatically. For anything else, map the columns below.
           </p>
         </div>
 
@@ -728,9 +728,9 @@ export function OnboardingImportPanel() {
         {result ? (
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-lg border border-border p-2 text-center"><p className="text-[10px] uppercase text-muted-foreground">Properties</p><p className="text-lg font-bold">{result.properties.length}</p></div>
-              <div className="rounded-lg border border-border p-2 text-center"><p className="text-[10px] uppercase text-muted-foreground">Units</p><p className="text-lg font-bold">{result.units.length}</p></div>
-              <div className="rounded-lg border border-border p-2 text-center"><p className="text-[10px] uppercase text-muted-foreground">Tenants</p><p className="text-lg font-bold">{result.tenants.length}</p></div>
+              <div className="rounded-lg border border-border p-2 text-center"><p className="text-xs uppercase text-muted-foreground">Properties</p><p className="text-lg font-bold">{result.properties.length}</p></div>
+              <div className="rounded-lg border border-border p-2 text-center"><p className="text-xs uppercase text-muted-foreground">Units</p><p className="text-lg font-bold">{result.units.length}</p></div>
+              <div className="rounded-lg border border-border p-2 text-center"><p className="text-xs uppercase text-muted-foreground">Tenants</p><p className="text-lg font-bold">{result.tenants.length}</p></div>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -747,8 +747,8 @@ export function OnboardingImportPanel() {
               </div>
             ) : (
               <div className="rounded-lg border border-emerald-400/40 bg-emerald-50 p-3">
-                <p className="text-sm font-semibold flex items-center gap-2 text-emerald-700"><CheckCircle2 className="h-4 w-4" /> Ready to import</p>
-                <p className="text-xs text-emerald-700/80 mt-1">{importableCount} rows are ready.</p>
+                <p className="text-sm font-semibold flex items-center gap-2 text-success"><CheckCircle2 className="h-4 w-4" /> Ready to import</p>
+                <p className="text-xs text-success/80 mt-1">{importableCount} rows are ready.</p>
               </div>
             )}
 

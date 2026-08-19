@@ -1,173 +1,164 @@
-import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { User, Phone, Banknote } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { StatusBadge, type UnitStatus } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { formatKES } from "@/lib/number-formatter";
 import type { DashboardUnit } from "@/hooks/useDashboard";
-
-type UnitBadgeStatus = "paid" | "partial" | "arrears" | "vacant";
-
-function toNumber(v: unknown): number | null {
-  if (v === null || v === undefined) return null;
-  if (typeof v === "number") return Number.isFinite(v) ? Math.round(v) : null;
-  const parsed = parseFloat(String(v).replace(/[, ]+/g, ""));
-  return Number.isFinite(parsed) ? Math.round(parsed) : null;
-}
-
-function formatCurrency(n: number | null, currency = "KES", locale = "en-KE") {
-  if (n == null) return null;
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(n);
-  } catch {
-    return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n);
-  }
-}
 
 interface Props {
   unit?: DashboardUnit | null;
   className?: string;
   onRecordPayment?: (unit: DashboardUnit) => void;
+  /** Everything this tenant owes across all months, not just the one on screen. */
+  totalOwed?: number;
+  /** Whole months of rent those arrears represent. */
+  monthsBehind?: number;
 }
 
-export function UnitCard({ unit, className, onRecordPayment }: Props) {
+function toNumber(v: unknown): number {
+  const n = typeof v === "number" ? v : parseFloat(String(v ?? "0"));
+  return Number.isFinite(n) ? Math.round(n) : 0;
+}
+
+/**
+ * One unit, as a ledger row.
+ *
+ * Previously a floating card that lifted and glowed on hover
+ * (`hover:shadow-lg hover:border-primary/20`) — the interaction that most reads
+ * as a generated component, and meaningless on a phone where there is no hover.
+ * Now a flat row with a status rule down the left edge, matching the ledger
+ * summary above it. Hover only changes the border.
+ */
+export function UnitCard({
+  unit,
+  className,
+  onRecordPayment,
+  totalOwed,
+  monthsBehind = 0,
+}: Props) {
   if (!unit) {
     return (
-      <Card className={cn("p-3 sm:p-4 animate-pulse", className)} role="group" aria-label="Unit loading">
-        <div className="h-4 bg-muted/30 rounded w-1/3 mb-2" />
-        <div className="h-3 bg-muted/20 rounded w-2/3 mb-1" />
-        <div className="h-3 bg-muted/20 rounded w-1/2" />
-      </Card>
+      <div
+        className={cn("border border-border rounded-lg p-4 animate-pulse", className)}
+        aria-label="Loading unit"
+      >
+        <div className="h-4 w-1/3 bg-muted rounded-sm mb-2" />
+        <div className="h-3 w-2/3 bg-muted rounded-sm" />
+      </div>
     );
   }
 
-  const {
-    unit_number,
-    property_name,
-    tenant_id,
-    tenant_name,
-    tenant_phone,
-    rent_amount,
-    payment_status,
-    total_allocated,
-    balance,
-  } = unit;
+  const isVacant = !unit.tenant_id;
+  const balance = toNumber(unit.balance);
+  const rent = toNumber(unit.rent_amount);
 
-  const isVacant = !tenant_id;
+  const status: UnitStatus = isVacant
+    ? "vacant"
+    : unit.payment_status === "paid" || unit.payment_status === "overpaid"
+      ? "paid"
+      : unit.payment_status === "partial"
+        ? "partial"
+        : "arrears";
 
-  const rent = toNumber(rent_amount);
-  const paid = toNumber(total_allocated);
-  const bal = toNumber(balance);
-
-  const rentStr = formatCurrency(rent);
-  const paidStr = formatCurrency(paid);
-  const balStr = bal == null ? null : formatCurrency(Math.abs(bal));
-
-  let badgeStatus: UnitBadgeStatus = "arrears";
-  if (isVacant) badgeStatus = "vacant";
-  else if (payment_status === "paid" || payment_status === "overpaid") badgeStatus = "paid";
-  else if (payment_status === "partial") badgeStatus = "partial";
+  const rule =
+    status === "paid"
+      ? "border-l-success"
+      : status === "partial"
+        ? "border-l-warning"
+        : status === "arrears"
+          ? "border-l-destructive"
+          : "border-l-border";
 
   return (
-    <Card
+    <div
       className={cn(
-        "p-3 sm:p-4 transition-all duration-200 hover:shadow-lg hover:border-primary/20 relative",
+        "border border-border border-l-2 rounded-lg bg-card p-4",
+        "transition-colors hover:border-foreground/25",
+        rule,
         className
       )}
       role="group"
-      aria-label={`Unit ${unit_number} at ${property_name}`}
+      aria-label={`Unit ${unit.unit_number}, ${unit.property_name}`}
     >
-      <div className="flex items-start justify-between gap-2 sm:gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-1.5 mb-2 overflow-hidden">
-            <span className="text-base sm:text-lg font-bold text-foreground shrink-0">{unit_number}</span>
-            <span className="text-xs sm:text-sm text-muted-foreground font-medium truncate">| {property_name}</span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="font-bold text-foreground shrink-0">{unit.unit_number}</span>
+            <span className="text-xs text-muted-foreground truncate">{unit.property_name}</span>
           </div>
 
           {isVacant ? (
-            <p className="text-xs sm:text-sm text-muted-foreground">Available for rent</p>
+            <p className="text-sm text-muted-foreground mt-1">Available to let</p>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <div className="p-1.5 rounded-lg bg-primary/10 shrink-0" aria-hidden="true">
-                  <User className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
-                </div>
-                <span className="truncate font-medium" title={tenant_name ?? ""}>
-                  {tenant_name}
-                </span>
-              </div>
-
-              {tenant_phone && (
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                  <div className="p-1.5 rounded-lg bg-muted shrink-0" aria-hidden="true">
-                    <Phone className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                  </div>
-                  <span className="truncate" title={tenant_phone}>
-                    {tenant_phone}
-                  </span>
-                </div>
+            <>
+              <p className="text-sm font-medium truncate mt-1">{unit.tenant_name}</p>
+              {unit.tenant_phone && (
+                <p className="text-xs text-muted-foreground truncate">{unit.tenant_phone}</p>
               )}
-
-              {rent != null && (
-                <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-muted shrink-0" aria-hidden="true">
-                      <Banknote className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
-                    </div>
-                    <span className="font-semibold text-foreground whitespace-nowrap">
-                      {rentStr ?? `KES ${new Intl.NumberFormat().format(rent)}`}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1 items-center">
-                    {bal != null && bal > 0 && (
-                      <span
-                        className="text-red-600 text-[10px] sm:text-xs font-bold bg-red-50 px-2 py-0.5 rounded-full border border-red-100"
-                        role="status"
-                        title={`Owes ${balStr ?? bal}`}
-                      >
-                        Owes: {balStr ?? `KES ${new Intl.NumberFormat().format(bal)}`}
-                      </span>
-                    )}
-
-                    {bal != null && bal < 0 && (
-                      <span
-                        className="text-emerald-600 text-[10px] sm:text-xs font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100"
-                        role="status"
-                        title={`Forward ${balStr ?? Math.abs(bal)}`}
-                      >
-                        Forward: {balStr ?? `KES ${new Intl.NumberFormat().format(Math.abs(bal))}`}
-                      </span>
-                    )}
-
-                    {paid != null && (
-                      <span
-                        className="text-muted-foreground text-[10px] sm:text-xs bg-muted/40 px-2 py-0.5 rounded-full border border-muted/20"
-                        title={`Collected ${paidStr ?? paid}`}
-                      >
-                        Collected: {paidStr ?? `KES ${new Intl.NumberFormat().format(paid)}`}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            </>
           )}
         </div>
 
-        <div className="shrink-0 flex flex-col items-end gap-2">
-          <StatusBadge status={badgeStatus} />
-          {onRecordPayment && !isVacant && (
-            <Button size="sm" variant="ghost" onClick={() => onRecordPayment(unit)}>
-              Record Payment
+        <StatusBadge status={status} className="shrink-0" />
+      </div>
+
+      {!isVacant && (
+        <>
+          {/* The figures, aligned so they read down the column across rows. */}
+          <dl className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-2 text-xs">
+            <div>
+              <dt className="text-muted-foreground">Rent</dt>
+              <dd className="font-semibold tabular-nums mt-0.5">{formatKES(rent)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Paid</dt>
+              <dd className="font-semibold tabular-nums mt-0.5">
+                {formatKES(toNumber(unit.total_allocated))}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">
+                {balance < 0 ? "In credit" : "Owing"}
+              </dt>
+              <dd
+                className={cn(
+                  "font-semibold tabular-nums mt-0.5",
+                  balance > 0 && "text-destructive",
+                  balance < 0 && "text-success"
+                )}
+              >
+                {formatKES(Math.abs(balance))}
+              </dd>
+            </div>
+          </dl>
+
+          {/* Arrears carried from earlier months. Shown only when they exceed
+              what is owed for the month on screen, so it adds information
+              rather than repeating the column above. */}
+          {typeof totalOwed === "number" && totalOwed > Math.max(balance, 0) && (
+            <p className="mt-3 text-xs bg-destructive/10 text-destructive rounded-sm px-2.5 py-2">
+              <span className="font-semibold">{formatKES(totalOwed)} owed in total</span>
+              {monthsBehind > 0 && (
+                <span>
+                  {" · "}
+                  {monthsBehind} {monthsBehind === 1 ? "month" : "months"} behind
+                </span>
+              )}
+            </p>
+          )}
+
+          {onRecordPayment && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full mt-3"
+              onClick={() => onRecordPayment(unit)}
+            >
+              Record payment
             </Button>
           )}
-        </div>
-      </div>
-    </Card>
+        </>
+      )}
+    </div>
   );
 }
 

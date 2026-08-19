@@ -36,7 +36,7 @@ function AppBootScreen() {
     <div className="min-h-screen app-shell flex items-center justify-center px-6">
       <div className="surface-panel w-full max-w-sm p-8 text-center">
         <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground font-semibold">
-          Keja-Connect
+          RentKonnect
         </p>
         <h1 className="mt-2 text-xl font-bold text-foreground">Loading your workspace</h1>
         <div className="mt-5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -59,7 +59,7 @@ function MonthlyBilling({ session }: { session: Session | null }) {
   useEffect(() => {
     if (!session) return;
 
-    const billedKey = `keja:billed:${session.user.id}`;
+    const billedKey = `rentkonnect:billed:${session.user.id}`;
     const thisMonth = currentMonthKey();
     if (localStorage.getItem(billedKey) === thisMonth) return;
 

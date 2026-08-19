@@ -189,6 +189,7 @@ export function useCreateTenant(): UseMutationResult<
     },
     onSuccess: ({ addAnother }) => {
       queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["charges"] });
       toast({
@@ -273,6 +274,7 @@ export function useUpdateTenant(): UseMutationResult<
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["tenant-ledger"] });
       queryClient.invalidateQueries({ queryKey: ["charges"] });
@@ -311,6 +313,7 @@ export function useArchiveTenant(): UseMutationResult<
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["units"] });
       toast({
@@ -344,6 +347,7 @@ export function useDeleteTenant(): UseMutationResult<void, Error, string, unknow
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["charges"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });

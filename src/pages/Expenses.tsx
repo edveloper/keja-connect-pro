@@ -1,14 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { MonthSelector } from "@/components/layout/MonthSelector";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Building2, Home } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useExpenses, useExpenseCategories, useCreateExpense, useDeleteExpense, useTotalExpenses } from "@/hooks/useExpenses";
-import { useProperties } from "@/hooks/useProperties";
-import { useUnits } from "@/hooks/useUnits";
-import { ExpenseForm } from "@/components/expenses/ExpenseForm";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ShowMore, useProgressiveList } from "@/components/ui/show-more";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,138 +15,312 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
-import { toMonthKey } from "@/lib/month";
-import { MonthSelector } from "@/components/layout/MonthSelector";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Trash2, Wallet, Search, X } from "lucide-react";
+
+import { ExpenseForm } from "@/components/expenses/ExpenseForm";
+import {
+  useExpenses,
+  useExpenseCategories,
+  useCreateExpense,
+  useDeleteExpense,
+} from "@/hooks/useExpenses";
+import { useProperties } from "@/hooks/useProperties";
+import { useUnits } from "@/hooks/useUnits";
+
 import { formatKES } from "@/lib/number-formatter";
+import { toMonthKey, parseDateKey } from "@/lib/month";
+import { format } from "date-fns";
 
 export default function Expenses() {
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
-  
-  // 1. New Date State (matches Dashboard logic)
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  
-  // Format for the database: "YYYY-MM"
-  const monthKey = selectedDate ? toMonthKey(selectedDate) : null;
-  
-  // 2. Pass monthKey to hooks
-  const { data: expenses, isLoading: expensesLoading } = useExpenses(monthKey);
-  const { data: totalExpenses } = useTotalExpenses(monthKey);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [propertyFilter, setPropertyFilter] = useState("all");
 
+  const monthKey = selectedDate ? toMonthKey(selectedDate) : null;
+
+  const { data: expenses, isLoading } = useExpenses(monthKey);
   const { data: categories } = useExpenseCategories();
   const { data: properties } = useProperties();
   const { data: units } = useUnits();
-  
+
   const createExpense = useCreateExpense();
   const deleteExpense = useDeleteExpense();
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' });
-  };
+  const dateLabel = selectedDate ? format(selectedDate, "MMMM yyyy") : "All time";
 
-  const dateLabel = selectedDate ? format(selectedDate, "MMMM yyyy") : "All-Time Expenses";
+  const rows = useMemo(
+    () =>
+      (expenses ?? []).map((e) => ({
+        id: e.id,
+        amount: Number(e.amount) || 0,
+        date: e.expense_date,
+        category: e.expense_categories?.name ?? "Other",
+        property: e.properties?.name ?? null,
+        unit: e.units?.unit_number ?? null,
+        description: e.description ?? "",
+      })),
+    [expenses]
+  );
+
+  const total = rows.reduce((sum, r) => sum + r.amount, 0);
+
+  /** Where the money actually went, largest first. */
+  const byCategory = useMemo(() => {
+    const map = new Map<string, number>();
+    rows.forEach((r) => map.set(r.category, (map.get(r.category) ?? 0) + r.amount));
+    return [...map.entries()]
+      .map(([name, amount]) => ({ name, amount, share: total > 0 ? amount / total : 0 }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [rows, total]);
+
+  const propertyNames = useMemo(() => {
+    const names = new Set<string>();
+    rows.forEach((r) => r.property && names.add(r.property));
+    return [...names].sort();
+  }, [rows]);
+
+  const visible = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return rows
+      .filter((r) => {
+        if (categoryFilter !== "all" && r.category !== categoryFilter) return false;
+        if (propertyFilter !== "all" && r.property !== propertyFilter) return false;
+        if (!term) return true;
+        return (
+          r.description.toLowerCase().includes(term) ||
+          r.category.toLowerCase().includes(term) ||
+          (r.unit ?? "").toLowerCase().includes(term)
+        );
+      })
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [rows, searchTerm, categoryFilter, propertyFilter]);
+
+  const page = useProgressiveList(visible, {
+    resetKey: `${monthKey}-${searchTerm}-${categoryFilter}-${propertyFilter}`,
+  });
+
+  const filteredTotal = visible.reduce((sum, r) => sum + r.amount, 0);
+  const isFiltered =
+    categoryFilter !== "all" || propertyFilter !== "all" || searchTerm.trim() !== "";
 
   return (
-    <PageContainer 
-      title="Expenses" 
-      subtitle={dateLabel}
-    >
-      <MonthSelector
-        value={selectedDate}
-        onChange={setSelectedDate}
-        allTimeLabel="All-Time Expenses"
-      />
+    <PageContainer title="Expenses" subtitle={dateLabel}>
+      <MonthSelector value={selectedDate} onChange={setSelectedDate} allTimeLabel="All time" />
 
-      {/* Total Expenses Summary (Using a softer blue-style for specific cards) */}
-      <Card className="mb-6 bg-accent/60 border-accent shadow-none">
-        <CardContent className="py-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] uppercase font-bold text-primary tracking-tight mb-1">Total Outflow</p>
-              <p className="text-2xl font-black text-accent-foreground leading-none">
-                {formatKES(totalExpenses || 0)}
-              </p>
-            </div>
-            <Button onClick={() => setIsAddOpen(true)} size="sm" className="rounded-full px-4 shadow-sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Expense
-            </Button>
+      {/* Recording a cost is the most repeated action on this screen, so it
+          sits above the summary rather than tucked into its corner. */}
+      <Button className="w-full h-12 mb-4" onClick={() => setIsAddOpen(true)}>
+        <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+        Add an expense
+      </Button>
+
+      <section className="surface-panel p-4 mb-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="min-w-0">
+            <p className="eyebrow">Spent {selectedDate ? "this month" : "in total"}</p>
+            <p className="text-2xl font-bold tabular-nums mt-1">{formatKES(total)}</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Expenses List */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-            <h2 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-            Expense Breakdown
-            </h2>
-            <Badge variant="outline" className="text-[10px] font-bold">
-                {expenses?.length || 0} items
-            </Badge>
+          <p className="text-sm text-muted-foreground shrink-0">
+            {rows.length} {rows.length === 1 ? "entry" : "entries"}
+          </p>
         </div>
-        
-        {expensesLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+
+        {byCategory.length > 0 && (
+          <dl className="mt-4 pt-4 border-t border-border space-y-2">
+            {byCategory.slice(0, 4).map((c) => (
+              <div key={c.name} className="flex items-center gap-3">
+                <dt className="text-sm min-w-0 flex-1 truncate">{c.name}</dt>
+                {/* A share bar, so the biggest cost is obvious without reading. */}
+                <div className="h-1.5 w-16 bg-muted rounded-sm overflow-hidden shrink-0">
+                  <div
+                    className="h-full bg-foreground/60"
+                    style={{ width: `${Math.round(c.share * 100)}%` }}
+                  />
+                </div>
+                <dd className="text-sm font-semibold tabular-nums shrink-0 w-24 text-right">
+                  {formatKES(c.amount)}
+                </dd>
+              </div>
             ))}
+            {byCategory.length > 4 && (
+              <p className="text-xs text-muted-foreground pt-1">
+                and {byCategory.length - 4} more{" "}
+                {byCategory.length - 4 === 1 ? "category" : "categories"}
+              </p>
+            )}
+          </dl>
+        )}
+      </section>
+
+      {rows.length > 0 && (
+        <div className="space-y-3 mb-5">
+          <div className="relative">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              placeholder="Search description, category or unit"
+              className="pl-10 h-11"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
-        ) : !expenses || expenses.length === 0 ? (
-          <div className="text-center py-12 bg-muted/40 rounded-3xl border border-dashed border-border">
-            <p className="text-sm text-muted-foreground">No expenses recorded for this time period.</p>
+
+          <div className="flex gap-2">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-9 text-xs" aria-label="Filter by category">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {byCategory.map((c) => (
+                  <SelectItem key={c.name} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {propertyNames.length > 1 && (
+              <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                <SelectTrigger className="h-9 text-xs" aria-label="Filter by property">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All properties</SelectItem>
+                  {propertyNames.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {isFiltered && (
+            <p className="text-xs text-muted-foreground">
+              {visible.length} of {rows.length} shown ·{" "}
+              <span className="font-semibold tabular-nums">{formatKES(filteredTotal)}</span>
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {isLoading ? (
+          <>
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </>
+        ) : visible.length === 0 ? (
+          <div className="surface-panel px-6 py-12 text-center">
+            <Wallet className="h-8 w-8 text-muted-foreground/60 mx-auto mb-3" aria-hidden="true" />
+            {rows.length === 0 ? (
+              <>
+                <p className="text-sm font-semibold">
+                  Nothing recorded {selectedDate ? "this month" : "yet"}
+                </p>
+                <p className="mt-1 mb-4 text-sm text-muted-foreground">
+                  Repairs, water, security, garbage — logging them is what makes your net
+                  income figure real.
+                </p>
+                <Button onClick={() => setIsAddOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+                  Add an expense
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold">Nothing matches</p>
+                <p className="mt-1 mb-4 text-sm text-muted-foreground">
+                  Try a different search, or clear the filters.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setCategoryFilter("all");
+                    setPropertyFilter("all");
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </>
+            )}
           </div>
         ) : (
-          expenses.map((expense) => (
-            <Card key={expense.id} className="relative border-border shadow-sm overflow-hidden group">
-              <CardContent className="py-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border-none text-[10px] px-1.5 py-0">
-                        {expense.expense_categories?.name || 'General'}
-                      </Badge>
-                      {expense.unit_id ? (
-                        <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 uppercase">
-                          <Home className="h-2.5 w-2.5" />
-                          Unit {expense.units?.unit_number}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 uppercase">
-                          <Building2 className="h-2.5 w-2.5" />
-                          Property
-                        </span>
-                      )}
-                    </div>
-                    <p className="font-bold text-foreground text-lg leading-tight mb-1">
-                      KES {expense.amount.toLocaleString()}
-                    </p>
-                    {expense.description && (
-                      <p className="text-sm text-muted-foreground mb-2 italic">
-                        "{expense.description}"
-                      </p>
-                    )}
-                    <div className="flex items-center gap-2">
-                         <div className="w-1.5 h-1.5 rounded-full bg-muted" />
-                         <p className="text-[10px] font-medium text-muted-foreground">
-                        {expense.properties?.name} | {formatDate(expense.expense_date)}
-                        </p>
-                    </div>
+          <>
+            {page.visible.map((row) => (
+              <div
+                key={row.id}
+                className="border border-border rounded-lg bg-card px-4 py-3 flex items-start gap-3 transition-colors hover:border-foreground/25"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-sm font-medium truncate">{row.category}</span>
+                    <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                      {format(parseDateKey(row.date), "d MMM")}
+                    </span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/5"
-                    onClick={() => setExpenseToDelete(expense.id)}
-                    disabled={deleteExpense.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {row.description && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {row.description}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {row.unit ? `Unit ${row.unit}` : "Whole property"}
+                    {row.property ? ` · ${row.property}` : ""}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          ))
+
+                <span className="text-sm font-semibold tabular-nums shrink-0">
+                  {formatKES(row.amount)}
+                </span>
+
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 shrink-0 -mr-2 text-muted-foreground hover:text-destructive"
+                  onClick={() => setExpenseToDelete(row.id)}
+                  disabled={deleteExpense.isPending}
+                  aria-label={`Remove ${row.category} expense`}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+            ))}
+
+            {page.hasMore && (
+              <ShowMore
+                remaining={page.remaining}
+                noun="expense"
+                onClick={page.showMore}
+                className="w-full mt-2"
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -160,30 +330,25 @@ export default function Expenses() {
         categories={categories || []}
         properties={properties || []}
         units={units || []}
-        onSubmit={(data) => {
-          createExpense.mutate(data, {
-            onSuccess: () => setIsAddOpen(false),
-          });
-        }}
+        onSubmit={(data) => createExpense.mutate(data, { onSuccess: () => setIsAddOpen(false) })}
         isLoading={createExpense.isPending}
       />
 
       <AlertDialog
-        open={!!expenseToDelete}
-        onOpenChange={(open) => {
-          if (!open) setExpenseToDelete(null);
-        }}
+        open={Boolean(expenseToDelete)}
+        onOpenChange={(open) => !open && setExpenseToDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
+            <AlertDialogTitle>Remove this expense?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove this expense record.
+              It comes off your totals for {dateLabel}, so your net income figure will change.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (!expenseToDelete) return;
                 deleteExpense.mutate(expenseToDelete, {
@@ -191,7 +356,7 @@ export default function Expenses() {
                 });
               }}
             >
-              Delete
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -199,4 +364,3 @@ export default function Expenses() {
     </PageContainer>
   );
 }
-

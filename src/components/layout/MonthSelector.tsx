@@ -40,7 +40,7 @@ export function MonthSelector({ value, onChange, allTimeLabel = "All-Time Overvi
         <button
           type="button"
           onClick={() => onChange(value ? null : new Date())}
-          className="text-[10px] text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline"
+          className="text-xs text-primary font-bold uppercase tracking-wider mt-0.5 hover:underline"
         >
           {value ? "Switch to All-Time" : "Back to Monthly View"}
         </button>

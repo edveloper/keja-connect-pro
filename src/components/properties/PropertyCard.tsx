@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ShowMore, useProgressiveList } from "@/components/ui/show-more";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,36 +13,53 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Building2, Plus, Home, Users, ChevronDown, Trash2, Pencil } from "lucide-react";
-import { Tables } from "@/integrations/supabase/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, ChevronDown, Trash2, Pencil, MoreVertical, DoorOpen, Check, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { formatKES } from "@/lib/number-formatter";
+import type { Tables } from "@/integrations/supabase/types";
 
 type Property = Tables<"properties">;
 type Unit = Tables<"units">;
 
+/** Who is in each unit, so the list can answer "who lives in A3?". */
+export interface UnitOccupant {
+  id: string;
+  name: string;
+  rent: number;
+  owes: number;
+}
+
 interface PropertyCardProps {
   property: Property;
   units: Unit[];
-  tenantCounts: Record<string, number>;
+  occupantsByUnit: Map<string, UnitOccupant>;
   onAddUnit: (propertyId: string, propertyName: string, numberingStyle?: string) => void;
   onEditProperty: (property: Property) => void;
   onEditUnit: (unitId: string, unitNumber: string) => void;
   onToggleUnitAvailability: (unitId: string, isAvailable: boolean) => void;
   onDeleteUnit: (unitId: string) => void;
   onDeleteProperty: (propertyId: string) => void;
-  index: number;
+  onOpenTenant?: (tenantId: string) => void;
 }
 
 export function PropertyCard({
   property,
   units,
-  tenantCounts,
+  occupantsByUnit,
   onAddUnit,
   onEditProperty,
   onEditUnit,
   onToggleUnitAvailability,
   onDeleteUnit,
   onDeleteProperty,
-  index,
+  onOpenTenant,
 }: PropertyCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [deleteUnitId, setDeleteUnitId] = useState<string | null>(null);
@@ -51,19 +67,35 @@ export function PropertyCard({
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [editingUnitNumber, setEditingUnitNumber] = useState("");
 
-  // Natural sorting for unit numbers within this property.
-  const propertyUnits = useMemo(() => {
-    return units
-      .filter((u) => u.property_id === property.id)
-      .sort((a, b) => 
-        a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true, sensitivity: 'base' })
-      );
-  }, [units, property.id]);
-
-  const totalTenants = propertyUnits.reduce(
-    (sum, unit) => sum + (tenantCounts[unit.id] || 0),
-    0
+  const propertyUnits = useMemo(
+    () =>
+      units
+        .filter((u) => u.property_id === property.id)
+        .sort((a, b) =>
+          a.unit_number.localeCompare(b.unit_number, undefined, {
+            numeric: true,
+            sensitivity: "base",
+          })
+        ),
+    [units, property.id]
   );
+
+  const unitPage = useProgressiveList(propertyUnits, { resetKey: property.id });
+
+  const stats = useMemo(() => {
+    let occupied = 0;
+    let rentRoll = 0;
+    let arrears = 0;
+    propertyUnits.forEach((u) => {
+      const occupant = occupantsByUnit.get(u.id);
+      if (!occupant) return;
+      occupied += 1;
+      rentRoll += occupant.rent;
+      arrears += Math.max(0, occupant.owes);
+    });
+    return { occupied, rentRoll, arrears, vacant: propertyUnits.length - occupied };
+  }, [propertyUnits, occupantsByUnit]);
+
   const locationLine = [
     property.street_address || property.address,
     property.neighborhood,
@@ -76,233 +108,315 @@ export function PropertyCard({
 
   return (
     <>
-      <Card
-        className="animate-slide-up overflow-hidden border-border/50"
-        style={{ animationDelay: `${index * 75}ms` }}
-      >
-        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <CollapsibleTrigger asChild>
-            <div
-              className="p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-              onDoubleClick={(e) => {
-                e.stopPropagation();
-                onEditProperty(property);
-              }}
-              title="Double-click to edit property"
+      <div className="border border-border rounded-lg bg-card overflow-hidden">
+        <div className="flex items-start gap-2 p-4">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold truncate">{property.name}</h3>
+            {locationLine && (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{locationLine}</p>
+            )}
+          </div>
+
+          {/* Editing a property used to require a double-click on the card, with
+              a tooltip nobody sees. On a phone a double-tap is zoom, so on the
+              main device the action did not exist at all. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 shrink-0"
+                aria-label={`Actions for ${property.name}`}
+              >
+                <MoreVertical className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => onEditProperty(property)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit property
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onAddUnit(property.id, property.name, property.numbering_style || undefined)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add units
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => setDeletePropertyOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete property
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* What this building is actually doing, without opening it. */}
+        <dl className="grid grid-cols-3 gap-px bg-border border-y border-border">
+          <div className="bg-card px-4 py-3">
+            <dt className="text-xs text-muted-foreground">Occupied</dt>
+            <dd className="text-sm font-semibold tabular-nums mt-0.5">
+              {stats.occupied} of {propertyUnits.length}
+            </dd>
+          </div>
+          <div className="bg-card px-4 py-3">
+            <dt className="text-xs text-muted-foreground">Rent roll</dt>
+            <dd className="text-sm font-semibold tabular-nums mt-0.5">
+              {formatKES(stats.rentRoll)}
+            </dd>
+          </div>
+          <div className="bg-card px-4 py-3">
+            <dt className="text-xs text-muted-foreground">Arrears</dt>
+            <dd
+              className={cn(
+                "text-sm font-semibold tabular-nums mt-0.5",
+                stats.arrears > 0 && "text-destructive"
+              )}
             >
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-primary/10 text-primary shrink-0">
-                  <Building2 className="h-6 w-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-foreground truncate text-base">
-                    {property.name}
-                  </h3>
-                  {locationLine && (
-                    <p className="text-xs text-muted-foreground truncate mb-1">
-                      {locationLine}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Home className="h-3.5 w-3.5" />
-                      {propertyUnits.length} units
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5" />
-                      {totalTenants} tenants
-                    </span>
-                  </div>
-                </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEditProperty(property);
-                  }}
-                  aria-label={`Edit ${property.name}`}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <ChevronDown
-                  className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${
-                    isOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </div>
-            </div>
+              {formatKES(stats.arrears)}
+            </dd>
+          </div>
+        </dl>
+
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-muted/40 transition-colors">
+            <span className="text-sm font-medium">
+              {isOpen ? "Hide" : "Show"} {propertyUnits.length}{" "}
+              {propertyUnits.length === 1 ? "unit" : "units"}
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform shrink-0",
+                isOpen && "rotate-180"
+              )}
+              aria-hidden="true"
+            />
           </CollapsibleTrigger>
+
           <CollapsibleContent>
-            <div className="px-4 pb-4 border-t border-border/50 pt-4 space-y-4 bg-muted/10">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Unit List</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs font-semibold"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddUnit(property.id, property.name, property.numbering_style || undefined);
-                  }}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add Unit
-                </Button>
-              </div>
-              
+            <div className="border-t border-border">
               {propertyUnits.length === 0 ? (
-                <div className="text-center py-6 bg-muted/20 rounded-xl border border-dashed">
-                  <p className="text-xs text-muted-foreground">No units added yet</p>
+                <div className="px-4 py-6 text-center">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    No units in this property yet.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      onAddUnit(property.id, property.name, property.numbering_style || undefined)
+                    }
+                  >
+                    <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Add units
+                  </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                  {propertyUnits.map((unit) => (
-                    <div
-                      key={unit.id}
-                      className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-2.5 rounded-xl bg-background border border-border/50 shadow-sm overflow-hidden"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                        {editingUnitId === unit.id ? (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Input
-                              value={editingUnitNumber}
-                              onChange={(e) => setEditingUnitNumber(e.target.value)}
-                              className="h-7 w-20 text-xs"
-                            />
-                            <Button
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!editingUnitNumber.trim()) return;
-                                onEditUnit(unit.id, editingUnitNumber.trim());
-                                setEditingUnitId(null);
-                              }}
-                            >
-                              Save
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-sm font-bold text-foreground truncate">#{unit.unit_number}</span>
-                        )}
-                        {!unit.is_available ? (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 uppercase border-amber-300 text-amber-700 bg-amber-50">
-                            Unavailable
-                          </Badge>
-                        ) : tenantCounts[unit.id] ? (
-                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 uppercase">
-                            Full
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 uppercase text-success border-success/30 bg-success/5">
-                            Vacant
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex w-full sm:w-auto flex-wrap sm:flex-nowrap items-center justify-end gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 text-muted-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingUnitId(unit.id);
-                            setEditingUnitNumber(unit.unit_number);
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-[10px] leading-tight whitespace-normal"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleUnitAvailability(unit.id, !unit.is_available);
-                          }}
-                        >
-                          {unit.is_available ? "Mark Unavailable" : "Mark Available"}
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteUnitId(unit.id);
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                <>
+                  <ul className="divide-y divide-border">
+                    {unitPage.visible.map((unit) => {
+                      const occupant = occupantsByUnit.get(unit.id);
+                      const isEditing = editingUnitId === unit.id;
+
+                      return (
+                        <li key={unit.id} className="flex items-center gap-3 px-4 py-3">
+                          {isEditing ? (
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <Input
+                                value={editingUnitNumber}
+                                onChange={(e) => setEditingUnitNumber(e.target.value)}
+                                className="h-9 flex-1 min-w-0"
+                                autoFocus
+                                aria-label="Unit number"
+                              />
+                              <Button
+                                size="icon"
+                                className="h-9 w-9 shrink-0"
+                                aria-label="Save unit number"
+                                onClick={() => {
+                                  if (!editingUnitNumber.trim()) return;
+                                  onEditUnit(unit.id, editingUnitNumber.trim());
+                                  setEditingUnitId(null);
+                                }}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-9 w-9 shrink-0"
+                                aria-label="Cancel"
+                                onClick={() => setEditingUnitId(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="font-semibold text-sm w-14 shrink-0 tabular-nums">
+                                {unit.unit_number}
+                              </span>
+
+                              <div className="min-w-0 flex-1">
+                                {occupant ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenTenant?.(occupant.id)}
+                                    className="text-sm truncate text-left hover:underline underline-offset-2 max-w-full"
+                                  >
+                                    {occupant.name}
+                                  </button>
+                                ) : (
+                                  <span
+                                    className={cn(
+                                      "text-sm",
+                                      unit.is_available
+                                        ? "text-success"
+                                        : "text-muted-foreground"
+                                    )}
+                                  >
+                                    {unit.is_available ? "Vacant" : "Not available"}
+                                  </span>
+                                )}
+                                {occupant && occupant.owes > 0 && (
+                                  <span className="block text-xs text-destructive tabular-nums">
+                                    owes {formatKES(occupant.owes)}
+                                  </span>
+                                )}
+                              </div>
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-9 w-9 shrink-0 text-muted-foreground"
+                                    aria-label={`Actions for unit ${unit.unit_number}`}
+                                  >
+                                    <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-52">
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setEditingUnitId(unit.id);
+                                      setEditingUnitNumber(unit.unit_number);
+                                    }}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Rename unit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      onToggleUnitAvailability(unit.id, !unit.is_available)
+                                    }
+                                  >
+                                    <DoorOpen className="mr-2 h-4 w-4" />
+                                    {unit.is_available
+                                      ? "Mark not available"
+                                      : "Mark available"}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => setDeleteUnitId(unit.id)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete unit
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  {unitPage.hasMore && (
+                    <div className="px-4 py-3 border-t border-border">
+                      <ShowMore
+                        remaining={unitPage.remaining}
+                        noun="unit"
+                        onClick={unitPage.showMore}
+                      />
                     </div>
-                  ))}
-                </div>
+                  )}
+
+                  <div className="px-4 py-3 border-t border-border">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() =>
+                        onAddUnit(property.id, property.name, property.numbering_style || undefined)
+                      }
+                    >
+                      <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+                      Add more units
+                    </Button>
+                  </div>
+                </>
               )}
-              
-              <div className="pt-2 border-t border-border/50">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 h-9 text-xs font-semibold"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeletePropertyOpen(true);
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-2" />
-                  Delete Property
-                </Button>
-              </div>
             </div>
           </CollapsibleContent>
         </Collapsible>
-      </Card>
+      </div>
 
-      {/* AlertDialogs remain the same... */}
-      <AlertDialog open={!!deleteUnitId} onOpenChange={() => setDeleteUnitId(null)}>
-        <AlertDialogContent className="max-w-[90vw] rounded-2xl">
+      <AlertDialog
+        open={Boolean(deleteUnitId)}
+        onOpenChange={(open) => !open && setDeleteUnitId(null)}
+      >
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Unit?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this unit?</AlertDialogTitle>
             <AlertDialogDescription>
-              Permanently delete this unit. Tenants will be unassigned.
+              {deleteUnitId && occupantsByUnit.get(deleteUnitId)
+                ? `${occupantsByUnit.get(deleteUnitId)?.name} is living here. Move them out first, or their record goes too.`
+                : "This removes the unit permanently."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2">
-            <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="w-full rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (deleteUnitId) onDeleteUnit(deleteUnitId);
                 setDeleteUnitId(null);
               }}
             >
-              Delete
+              Delete unit
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={deletePropertyOpen} onOpenChange={setDeletePropertyOpen}>
-        <AlertDialogContent className="max-w-[90vw] rounded-2xl">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Property?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {property.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete "{property.name}" and all units.
+              {propertyUnits.length > 0
+                ? `This removes the property and all ${propertyUnits.length} of its units${
+                    stats.occupied > 0
+                      ? `, including ${stats.occupied} occupied by tenants whose records will go with them`
+                      : ""
+                  }.`
+                : "This removes the property permanently."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2">
-            <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="w-full rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 onDeleteProperty(property.id);
                 setDeletePropertyOpen(false);
               }}
             >
-              Delete Property
+              Delete property
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -310,3 +424,5 @@ export function PropertyCard({
     </>
   );
 }
+
+export default PropertyCard;

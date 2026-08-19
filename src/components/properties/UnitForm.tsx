@@ -43,9 +43,9 @@ export function UnitForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm mx-4 rounded-2xl border border-border/70 bg-card/95 p-5 shadow-card backdrop-blur-md">
+      <DialogContent className="max-w-sm mx-4 rounded-lg border border-border bg-card p-5 shadow-card">
         <DialogHeader>
-          <DialogTitle className="tracking-tight">Add Unit to {propertyName}</DialogTitle>
+          <DialogTitle className="tracking-tight">Add unit to {propertyName}</DialogTitle>
           {styleInfo && (
             <DialogDescription className="text-sm">
               Format: <span className="font-medium">{styleInfo.example}</span>
@@ -65,7 +65,7 @@ export function UnitForm({
             />
           </div>
           <Button type="submit" className="w-full" disabled={isLoading || !unitNumber.trim()}>
-            {isLoading ? "Adding..." : "Add Unit"}
+            {isLoading ? "Adding..." : "Add unit"}
           </Button>
         </form>
       </DialogContent>

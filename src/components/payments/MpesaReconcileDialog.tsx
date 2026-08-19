@@ -165,8 +165,8 @@ export function MpesaReconcileDialog({ open, onOpenChange }: Props) {
 
         {result ? (
           <div className="space-y-4">
-            <Alert className="border-emerald-300 bg-emerald-50/60">
-              <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+            <Alert className="border-success/30 bg-success/5">
+              <CheckCircle2 className="h-4 w-4 text-success" />
               <AlertDescription className="text-sm">
                 <span className="font-semibold">{result.posted} recorded.</span>{" "}
                 {result.skipped > 0 && `${result.skipped} skipped (no tenant assigned). `}
@@ -175,7 +175,7 @@ export function MpesaReconcileDialog({ open, onOpenChange }: Props) {
             </Alert>
 
             {result.failed.length > 0 && (
-              <div className="rounded-xl border border-border/60 divide-y">
+              <div className="rounded-lg border border-border/60 divide-y">
                 {result.failed.map((row) => (
                   <div key={row.code} className="flex justify-between gap-3 p-3 text-sm">
                     <span className="font-mono text-xs">{row.code}</span>
@@ -210,7 +210,7 @@ export function MpesaReconcileDialog({ open, onOpenChange }: Props) {
                 }
                 className="font-mono text-xs"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 You can paste several messages at once. Outgoing payments and airtime
                 purchases are ignored.
               </p>
@@ -241,7 +241,7 @@ export function MpesaReconcileDialog({ open, onOpenChange }: Props) {
                   <Badge variant="outline">{readyCount} ready</Badge>
                 </div>
 
-                <div className="rounded-xl border border-border/60 divide-y">
+                <div className="rounded-lg border border-border/60 divide-y">
                   {resolved.map((match) => {
                     const original = matches.find(
                       (m) => m.payment.code === match.payment.code
@@ -258,7 +258,7 @@ export function MpesaReconcileDialog({ open, onOpenChange }: Props) {
                               {match.payment.phone ? ` · ${match.payment.phone}` : ""}
                               {match.payment.paidOn ? ` · ${match.payment.paidOn}` : ""}
                             </p>
-                            <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                            <p className="text-xs font-mono text-muted-foreground mt-0.5">
                               {match.payment.code}
                             </p>
                           </div>
@@ -300,7 +300,7 @@ export function MpesaReconcileDialog({ open, onOpenChange }: Props) {
                         </Select>
 
                         {original && (
-                          <p className="text-[11px] text-muted-foreground">{original.reason}</p>
+                          <p className="text-xs text-muted-foreground">{original.reason}</p>
                         )}
                       </div>
                     );

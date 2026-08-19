@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,9 +25,12 @@ import { useTenantLedger } from "@/hooks/useTenantLedger";
 import { useDeletePayment } from "@/hooks/usePayments";
 import { useLandlordSettings } from "@/hooks/useLandlordSettings";
 import { formatKES } from "@/lib/number-formatter";
+import { ShowMore, useProgressiveList } from "@/components/ui/show-more";
+import { COMPACT_PAGE_SIZE } from "@/lib/pagination";
 import { buildArrearsReminder, whatsappLink } from "@/lib/reminders";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
 
 interface Props {
   open: boolean;
@@ -46,6 +49,20 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
   const deletePayment = useDeletePayment();
   const { data: landlordSettings } = useLandlordSettings();
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
+
+  const monthsNewestFirst = useMemo(
+    () => [...(ledger?.months ?? [])].reverse(),
+    [ledger?.months]
+  );
+
+  const monthPage = useProgressiveList(monthsNewestFirst, {
+    pageSize: COMPACT_PAGE_SIZE,
+    resetKey: tenant?.id ?? "",
+  });
+  const paymentPage = useProgressiveList(ledger?.payments ?? [], {
+    pageSize: COMPACT_PAGE_SIZE,
+    resetKey: tenant?.id ?? "",
+  });
 
   if (!tenant) return null;
 
@@ -78,15 +95,15 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
 
           {isLoading ? (
             <div className="space-y-3">
-              <Skeleton className="h-20 rounded-xl" />
-              <Skeleton className="h-48 rounded-xl" />
+              <Skeleton className="h-20 rounded-lg" />
+              <Skeleton className="h-48 rounded-lg" />
             </div>
           ) : (
             <div className="space-y-4">
               {/* Account position */}
-              <div className="grid grid-cols-3 gap-px rounded-xl border border-border overflow-hidden bg-border">
+              <div className="grid grid-cols-3 gap-px rounded-lg border border-border overflow-hidden bg-border">
                 <div className="bg-card p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
                     Billed
                   </p>
                   <p className="text-sm font-black tabular-nums mt-1">
@@ -94,7 +111,7 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                   </p>
                 </div>
                 <div className="bg-card p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
                     Paid
                   </p>
                   <p className="text-sm font-black tabular-nums mt-1">
@@ -102,13 +119,13 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                   </p>
                 </div>
                 <div className="bg-card p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
                     {owes ? "Owes" : balance < 0 ? "In credit" : "Settled"}
                   </p>
                   <p
                     className={cn(
                       "text-sm font-black tabular-nums mt-1",
-                      owes ? "text-destructive" : balance < 0 ? "text-emerald-600" : ""
+                      owes ? "text-destructive" : balance < 0 ? "text-success" : ""
                     )}
                   >
                     {formatKES(Math.abs(balance))}
@@ -117,16 +134,34 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
               </div>
 
               {reminder && (
-                <Button variant="outline" className="w-full" asChild>
-                  <a
-                    href={whatsappLink(tenant.phone!, reminder)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Send reminder on WhatsApp
-                  </a>
-                </Button>
+                <div className="space-y-1.5">
+                  <Button variant="outline" className="w-full" asChild>
+                    <a
+                      href={whatsappLink(tenant.phone!, reminder)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Send reminder on WhatsApp
+                    </a>
+                  </Button>
+
+                  {/* Asked here rather than on the dashboard: this is the one
+                      moment the missing detail actually costs the landlord
+                      something, so it is a prompt and not a nag. */}
+                  {!landlordSettings?.payTo && (
+                    <p className="text-sm text-muted-foreground">
+                      This message will not say where to pay.{" "}
+                      <Link
+                        to="/settings"
+                        className="text-primary underline underline-offset-2"
+                        onClick={() => onOpenChange(false)}
+                      >
+                        Add your M-Pesa details
+                      </Link>
+                    </p>
+                  )}
+                </div>
               )}
 
               <Tabs defaultValue="months">
@@ -148,7 +183,7 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm min-w-[26rem]">
                         <thead>
-                          <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          <tr className="text-xs uppercase tracking-wider text-muted-foreground">
                             <th className="text-left font-bold py-2">Month</th>
                             <th className="text-right font-bold py-2">Billed</th>
                             <th className="text-right font-bold py-2">Paid</th>
@@ -156,7 +191,7 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                           </tr>
                         </thead>
                         <tbody>
-                          {[...(ledger?.months ?? [])].reverse().map((month) => (
+                          {monthPage.visible.map((month) => (
                             <tr key={month.month} className="border-t border-border/60">
                               <td className="py-2 font-medium">{month.label}</td>
                               <td className="py-2 text-right tabular-nums">
@@ -171,7 +206,7 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                                   month.balance > 0
                                     ? "text-destructive"
                                     : month.balance < 0
-                                      ? "text-emerald-600"
+                                      ? "text-success"
                                       : "text-muted-foreground"
                                 )}
                               >
@@ -181,7 +216,18 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                           ))}
                         </tbody>
                       </table>
-                      <p className="text-[11px] text-muted-foreground mt-2">
+
+                      {monthPage.hasMore && (
+                        <div className="mt-3">
+                          <ShowMore
+                            remaining={monthPage.remaining}
+                            noun="earlier month"
+                            onClick={monthPage.showMore}
+                          />
+                        </div>
+                      )}
+
+                      <p className="text-xs text-muted-foreground mt-2">
                         Balance is the running total carried forward, not the month on its own.
                       </p>
                     </div>
@@ -195,10 +241,10 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {ledger?.payments.map((payment) => (
+                      {paymentPage.visible.map((payment) => (
                         <div
                           key={payment.id}
-                          className="rounded-xl border border-border/60 p-3 space-y-1.5"
+                          className="rounded-lg border border-border/60 p-3 space-y-1.5"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -213,7 +259,7 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
                               onClick={() => setPaymentToDelete(payment.id)}
                               aria-label={`Remove payment of ${formatKES(payment.amount)}`}
                             >
@@ -226,7 +272,7 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                               <Badge
                                 key={`${payment.id}-${allocation.month}`}
                                 variant="secondary"
-                                className="text-[10px] font-normal"
+                                className="text-xs font-normal"
                               >
                                 {allocation.label}: {allocation.amount.toLocaleString("en-KE")}
                               </Badge>
@@ -234,13 +280,21 @@ export function TenantLedgerDialog({ open, onOpenChange, tenant }: Props) {
                           </div>
 
                           {payment.note && (
-                            <p className="text-[11px] text-muted-foreground italic">
+                            <p className="text-xs text-muted-foreground italic">
                               {payment.note}
                             </p>
                           )}
                         </div>
                       ))}
-                      <p className="text-[11px] text-muted-foreground">
+                      {paymentPage.hasMore && (
+                        <ShowMore
+                          remaining={paymentPage.remaining}
+                          noun="older payment"
+                          onClick={paymentPage.showMore}
+                        />
+                      )}
+
+                      <p className="text-xs text-muted-foreground">
                         Tags show which months each payment actually cleared. Oldest arrears
                         are always paid off first.
                       </p>

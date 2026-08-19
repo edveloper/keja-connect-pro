@@ -7,7 +7,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Keja-Connect design tokens.
+/* RentKonnect design tokens.
  *
  * Light only, deliberately. A full set of dark tokens used to live here but
  * nothing ever applied the `dark` class, and components across the app hardcode
@@ -15,85 +15,85 @@
  * reintroducing dark mode, move those components onto the tokens below. */
 
 @layer base {
+  /* ---------------------------------------------------------------------
+   * RentKonnect — Ink & Ledger
+   *
+   * Near-black chrome on warm paper, with one clay accent reserved for
+   * actions. Green is demoted to a status signal: it means "paid" and
+   * nothing else. Previously the brand colour, the success colour and the
+   * paid state were all the same emerald, so the whole interface read as
+   * one flat wash of green and nothing stood out as needing attention.
+   *
+   * Light only, deliberately. See the note in `.app-shell` before adding
+   * a dark theme.
+   * ------------------------------------------------------------------ */
   :root {
-    --background: 210 20% 98%;
-    --foreground: 220 25% 10%;
+    /* Ground and ink */
+    --background: 45 29% 97%;          /* #FAF9F6 warm paper */
+    --foreground: 60 14% 7%;           /* #14140F near-black */
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: 60 14% 7%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover-foreground: 60 14% 7%;
 
-    /* Primary - Modern teal/green */
-    --primary: 160 84% 39%;
-    --primary-foreground: 0 0% 100%;
+    /* Clay — primary actions only, never decoration */
+    --primary: 15 60% 41%;             /* #A8492A */
+    --primary-foreground: 45 29% 97%;
 
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 220 25% 20%;
+    --secondary: 48 20% 93%;
+    --secondary-foreground: 60 14% 15%;
 
-    --muted: 210 15% 93%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 48 18% 94%;
+    --muted-foreground: 50 8% 38%;
 
-    --accent: 160 50% 95%;
-    --accent-foreground: 160 84% 30%;
+    --accent: 15 45% 94%;              /* pale clay, for hover and selection */
+    --accent-foreground: 15 60% 30%;
 
-    /* Success - Fresh green */
-    --success: 152 76% 42%;
-    --success-foreground: 0 0% 100%;
+    /* Status. These three appear on figures and badges, never on chrome. */
+    --success: 155 60% 26%;            /* #1B6B4A paid */
+    --success-foreground: 45 29% 97%;
 
-    /* Warning - Warm amber */
-    --warning: 38 95% 54%;
-    --warning-foreground: 30 100% 10%;
+    --warning: 34 70% 35%;             /* #96601A part-paid */
+    --warning-foreground: 45 29% 97%;
 
-    /* Destructive - Soft red */
-    --destructive: 0 72% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 356 71% 39%;        /* #A81D26 arrears */
+    --destructive-foreground: 45 29% 97%;
 
-    --border: 210 20% 90%;
-    --input: 210 20% 90%;
-    --ring: 160 84% 39%;
+    --border: 48 13% 84%;              /* #DCDAD2 hairline */
+    --input: 48 13% 84%;
+    --ring: 15 60% 41%;
 
-    --radius: 1rem;
+    /* 8px. A ledger, not a pill. */
+    --radius: 0.5rem;
 
-    /* Navigation */
-    --nav-background: 0 0% 100%;
-    --nav-foreground: 220 10% 50%;
-    --nav-active: 160 84% 39%;
+    /* Navigation is ink, so it reads as chrome rather than another card. */
+    --nav-background: 60 14% 10%;
+    --nav-foreground: 45 12% 62%;
+    --nav-active: 15 68% 62%;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, #10b77f, hsl(170 80% 35%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 20% 99%));
-    --gradient-surface: linear-gradient(135deg, hsl(210 20% 98%), hsl(210 15% 96%));
+    /* Warm shadows, so they sit on paper rather than floating above it. */
+    --shadow-sm: 0 1px 2px hsl(40 20% 20% / 0.05);
+    --shadow-md: 0 2px 6px hsl(40 20% 20% / 0.07);
+    --shadow-lg: 0 6px 18px hsl(40 20% 20% / 0.09);
+    --shadow-card: 0 1px 2px hsl(40 20% 20% / 0.05);
+    --shadow-nav: 0 -1px 12px hsl(40 20% 10% / 0.14);
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px hsl(220 25% 10% / 0.04);
-    --shadow-md: 0 4px 12px hsl(220 25% 10% / 0.06);
-    --shadow-lg: 0 8px 24px hsl(220 25% 10% / 0.08);
-    --shadow-card: 0 1px 3px hsl(220 25% 10% / 0.04), 0 4px 12px hsl(220 25% 10% / 0.03);
-    --shadow-nav: 0 -1px 3px hsl(220 25% 10% / 0.03);
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 45 29% 97%;
+    --sidebar-foreground: 60 14% 20%;
+    --sidebar-primary: 15 60% 41%;
+    --sidebar-primary-foreground: 45 29% 97%;
+    --sidebar-accent: 48 20% 93%;
+    --sidebar-accent-foreground: 60 14% 15%;
+    --sidebar-border: 48 13% 84%;
+    --sidebar-ring: 15 60% 41%;
   }
 }
-
 
 @layer base {
   * {
     @apply border-border;
-  }
-
-  html {
-    font-family: 'DM Sans', system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
   html {
@@ -104,12 +104,20 @@
     @apply bg-background text-foreground;
     overflow-x: hidden;
     font-feature-settings: "rlig" 1, "calt" 1;
-    background-image:
-      radial-gradient(circle at 5% 0%, hsl(var(--primary) / 0.12), transparent 34%),
-      radial-gradient(circle at 95% 5%, hsl(210 90% 60% / 0.1), transparent 36%),
-      linear-gradient(180deg, hsl(var(--background)), hsl(var(--secondary)));
-    background-attachment: fixed;
+    /* Flat paper. The two blurred colour orbs and the grid overlay that used
+     * to sit here were decoration with no meaning, and the clearest single
+     * signal that the app had been generated rather than designed. */
     min-height: 100vh;
+  }
+
+  /* Money and dates line up in columns everywhere they appear. */
+  .tabular, td, th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.014em;
+    text-wrap: balance;
   }
 }
 
@@ -118,51 +126,35 @@
     padding-bottom: env(safe-area-inset-bottom, 1rem);
   }
 
-  .glass {
-    @apply backdrop-blur-xl bg-card/75;
-  }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-nav  { box-shadow: var(--shadow-nav); }
 
-  .shadow-card {
-    box-shadow: var(--shadow-card);
-  }
-
-  .shadow-nav {
-    box-shadow: var(--shadow-nav);
-  }
-
-  .gradient-primary {
-    background: var(--gradient-primary);
-  }
-
-  .gradient-card {
-    background: var(--gradient-card);
-  }
-
-  .text-balance {
-    text-wrap: balance;
-  }
+  .text-balance { text-wrap: balance; }
 
   .app-shell {
     position: relative;
-    /* `clip` rather than `hidden`: both stop the decorative blur circles from
-     * widening the page, but `overflow: hidden` turns this element into a
-     * scroll container, which silently stops the sticky page header from
-     * sticking. `clip` does not. */
+    /* `clip` rather than `hidden`: `overflow: hidden` would turn this into a
+     * scroll container and silently stop the sticky page header sticking. */
     overflow-x: clip;
   }
 
+  /* A panel is a sheet of paper with a hairline edge — not frosted glass.
+   * The old version was `bg-card/80 backdrop-blur-md`, which is the single
+   * most recognisable generated-app treatment there is. */
   .surface-panel {
-    @apply rounded-2xl border border-border/70 bg-card/80 backdrop-blur-md shadow-card;
+    @apply rounded-lg border border-border bg-card shadow-card;
   }
 
-  .soft-grid {
-    background-image:
-      linear-gradient(to right, hsl(210 18% 90% / 0.24) 1px, transparent 1px),
-      linear-gradient(to bottom, hsl(210 18% 90% / 0.24) 1px, transparent 1px);
-    background-size: 18px 18px;
+  /* A rule, used to separate rather than to decorate. */
+  .hairline { @apply border-t border-border; }
+
+  /* Structural marker borrowed from the portfolio: a small caps label with a
+   * leading star, for sections that need naming rather than boxing. */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground;
   }
 
   .elevate {
-    @apply transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg;
+    @apply transition-colors duration-150 hover:border-foreground/20;
   }
 }

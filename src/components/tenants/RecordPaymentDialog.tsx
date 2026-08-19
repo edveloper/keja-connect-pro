@@ -138,13 +138,13 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
         if (!next) reset();
       }}
     >
-      <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto rounded-2xl border border-border/70 bg-card/95 p-5 shadow-card backdrop-blur-md">
+      <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto rounded-lg border border-border bg-card p-5 shadow-card">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold tracking-tight">Record Payment</DialogTitle>
+          <DialogTitle className="text-lg font-bold tracking-tight">Record payment</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="surface-panel rounded-xl p-3 text-sm space-y-1">
+          <div className="surface-panel rounded-lg p-3 text-sm space-y-1">
             <div className="font-semibold">{tenant.tenant_name}</div>
             <div className="text-muted-foreground">
               Unit {tenant.unit_number}
@@ -156,7 +156,7 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
               </div>
             )}
             {outstanding < 0 && (
-              <div className="text-xs font-bold text-emerald-600">
+              <div className="text-xs font-bold text-success">
                 In credit {formatKES(Math.abs(outstanding))}
               </div>
             )}
@@ -213,7 +213,7 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
                 <ul className="mt-1.5 space-y-0.5">
                   {allocationPreview.map((row) => (
                     <li key={row.label} className="flex justify-between gap-3">
-                      <span className={row.isCredit ? "text-emerald-700" : ""}>{row.label}</span>
+                      <span className={row.isCredit ? "text-success" : ""}>{row.label}</span>
                       <span className="font-semibold tabular-nums">{formatKES(row.amount)}</span>
                     </li>
                   ))}
@@ -267,7 +267,7 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
             onClick={handleSubmit}
             disabled={createPayment.isPending || !hasAmount || Boolean(duplicate)}
           >
-            {createPayment.isPending ? "Recording..." : "Record Payment"}
+            {createPayment.isPending ? "Recording..." : "Record payment"}
           </Button>
         </div>
       </DialogContent>

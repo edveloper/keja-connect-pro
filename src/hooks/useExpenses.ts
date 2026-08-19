@@ -140,7 +140,7 @@ export function useCreateExpense(): UseMutationResult<Expense, Error, CreateExpe
     },
     onError: (error: unknown) => {
       toast({
-        title: "Error",
+        title: "Could not save expense",
         description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
@@ -158,11 +158,11 @@ export function useDeleteExpense(): UseMutationResult<void, Error, string, unkno
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast({ title: "Deleted", description: "Expense record removed" });
+      toast({ title: "Expense removed" });
     },
     onError: (error: unknown) => {
       toast({
-        title: "Error",
+        title: "Could not save expense",
         description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });
@@ -184,11 +184,11 @@ export function useCreateCategory(): UseMutationResult<ExpenseCategory, Error, s
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expense-categories"] });
-      toast({ title: "Success", description: "Category created" });
+      toast({ title: "Category added" });
     },
     onError: (error: unknown) => {
       toast({
-        title: "Error",
+        title: "Could not save expense",
         description: getSupabaseErrorMessage(error),
         variant: "destructive",
       });

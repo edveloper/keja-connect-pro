@@ -167,15 +167,15 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm mx-4 max-h-[90vh] overflow-y-auto rounded-2xl border border-border/70 bg-card/95 p-5 shadow-card backdrop-blur-md">
+      <DialogContent className="max-w-sm mx-4 max-h-[90vh] overflow-y-auto rounded-lg border border-border bg-card p-5 shadow-card">
         <DialogHeader><DialogTitle className="tracking-tight">{title}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="surface-panel space-y-2 p-3">
             <Label className="text-xs text-muted-foreground">Quick Formats</Label>
             <div className="grid grid-cols-3 gap-2">
-              <Button type="button" variant="outline" className="text-[10px] h-7 px-1" onClick={() => { setNumberingStyle("numbers"); setUnitCount("10"); }}>1, 2, 3...</Button>
-              <Button type="button" variant="outline" className="text-[10px] h-7 px-1" onClick={() => { setNumberingStyle("block_unit"); setBlockConfigs([{ block: "A", unitCount: 5 }, { block: "B", unitCount: 5 }]); }}>A1, B1...</Button>
-              <Button type="button" variant="outline" className="text-[10px] h-7 px-1" onClick={() => { setNumberingStyle("floor_unit"); setUnitCount("8"); }}>1A, 2A...</Button>
+              <Button type="button" variant="outline" className="text-xs h-9 px-2" onClick={() => { setNumberingStyle("numbers"); setUnitCount("10"); }}>1, 2, 3...</Button>
+              <Button type="button" variant="outline" className="text-xs h-9 px-2" onClick={() => { setNumberingStyle("block_unit"); setBlockConfigs([{ block: "A", unitCount: 5 }, { block: "B", unitCount: 5 }]); }}>A1, B1...</Button>
+              <Button type="button" variant="outline" className="text-xs h-9 px-2" onClick={() => { setNumberingStyle("floor_unit"); setUnitCount("8"); }}>1A, 2A...</Button>
             </div>
           </div>
 
@@ -223,7 +223,7 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
               <SelectContent>
                 {NUMBERING_STYLES.map((s) => (
                   <SelectItem key={s.value} value={s.value}>
-                    <div className="flex flex-col"><span className="text-sm">{s.label}</span><span className="text-[10px] opacity-70">{s.example}</span></div>
+                    <div className="flex flex-col"><span className="text-sm">{s.label}</span><span className="text-xs opacity-70">{s.example}</span></div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -234,11 +234,11 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
             <div className="surface-panel space-y-2 p-3">
               {blockConfigs.map((c, i) => (
                 <div key={i} className="flex gap-2 mb-2">
-                  <Input className="w-12 h-8" value={c.block} onChange={(e) => { const u = [...blockConfigs]; u[i].block = e.target.value.toUpperCase(); setBlockConfigs(u); }} maxLength={1} />
-                  <Input type="number" className="h-8" value={c.unitCount || ""} onChange={(e) => { const u = [...blockConfigs]; u[i].unitCount = parseInt(e.target.value, 10) || 0; setBlockConfigs(u); }} />
+                  <Input className="w-14 h-9" value={c.block} onChange={(e) => { const u = [...blockConfigs]; u[i].block = e.target.value.toUpperCase(); setBlockConfigs(u); }} maxLength={1} />
+                  <Input type="number" className="h-9" value={c.unitCount || ""} onChange={(e) => { const u = [...blockConfigs]; u[i].unitCount = parseInt(e.target.value, 10) || 0; setBlockConfigs(u); }} />
                 </div>
               ))}
-              <Button type="button" variant="link" className="text-xs p-0 h-4" onClick={() => setBlockConfigs([...blockConfigs, { block: "C", unitCount: 5 }])}>+ Add Block</Button>
+              <Button type="button" variant="link" className="text-xs px-2 h-9" onClick={() => setBlockConfigs([...blockConfigs, { block: "C", unitCount: 5 }])}>+ Add Block</Button>
             </div>
           ) : !isEditMode ? (
             <div className="space-y-2">
@@ -248,13 +248,13 @@ export function PropertyForm({ open, onOpenChange, onSubmit, isLoading, defaultV
           ) : null}
 
           {isEditMode && (
-            <div className="text-[11px] p-2 bg-accent/50 rounded-md border border-border">
-              <span className="text-muted-foreground">Unit creation settings are disabled in edit mode. Use "Add Unit" from the property card.</span>
+            <div className="text-xs p-2 bg-accent/50 rounded-md border border-border">
+              <span className="text-muted-foreground">Unit creation settings are disabled in edit mode. Use "Add unit" from the property card.</span>
             </div>
           )}
 
           {!isEditMode && preview.length > 0 && (
-            <div className="text-[11px] p-2 bg-accent/50 rounded-md border border-border">
+            <div className="text-xs p-2 bg-accent/50 rounded-md border border-border">
               <span className="font-semibold block mb-1">Preview:</span>
               <span className="text-muted-foreground">{preview.join(", ")}{totalUnits > 5 ? "..." : ""}</span>
             </div>

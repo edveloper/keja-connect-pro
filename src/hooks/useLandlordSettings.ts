@@ -59,6 +59,7 @@ export function useSaveLandlordSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["landlord-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       toast({ title: "Settings saved" });
     },
     onError: (error) => {

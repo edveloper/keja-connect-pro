@@ -106,6 +106,7 @@ export function useCreateUnit(): UseMutationResult<Unit, Error, CreateUnitInput,
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       toast({ title: 'Success', description: 'Unit created successfully' });
     },
     onError: (error: unknown) => {
@@ -152,6 +153,7 @@ export function useBulkCreateUnits(): UseMutationResult<Unit[], Error, BulkCreat
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       toast({ title: 'Success', description: `${data.length} units created` });
     },
     onError: (error: unknown) => {
@@ -192,6 +194,7 @@ export function useDeleteUnit(): UseMutationResult<void, Error, string, unknown>
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       toast({ title: 'Success', description: 'Unit deleted' });
     },
@@ -242,6 +245,7 @@ export function useUpdateUnit(): UseMutationResult<
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ["setup-status"] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       toast({ title: 'Success', description: 'Unit updated' });

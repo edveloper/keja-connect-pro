@@ -1,4 +1,4 @@
-# Keja-Connect
+# RentKonnect
 
 Rent tracking for Kenyan landlords. Bills rent monthly, applies payments to the
 oldest arrears first, reconciles pasted M-Pesa messages, and exports the twelve

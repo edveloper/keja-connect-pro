@@ -196,7 +196,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
     <form onSubmit={(e) => handleSubmit(e, false)} className="flex flex-col h-full max-h-[85vh]">
       <div className="flex-1 overflow-y-auto pr-2 space-y-4">
         <div className="space-y-4">
-          <Label className="text-xs font-bold uppercase text-muted-foreground">Tenant Information</Label>
+          <Label className="text-xs font-bold uppercase text-muted-foreground">Tenant details</Label>
 
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -224,11 +224,11 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
               />
             </div>
             {phoneError ? (
-              <p id="tenant-phone-error" className="text-[11px] text-destructive">
+              <p id="tenant-phone-error" className="text-xs text-destructive">
                 {phoneError}
               </p>
             ) : (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Used to match M-Pesa payments and send reminders.
               </p>
             )}
@@ -236,7 +236,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
 
           <div className="surface-panel p-3 space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold">First Month Charge</Label>
+              <Label className="text-xs font-bold">First month charge</Label>
               <Switch checked={isProrated} onCheckedChange={(v) => setIsProrated(Boolean(v))} />
             </div>
 
@@ -245,7 +245,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
             </div>
 
             <div className="space-y-1 mt-2">
-              <Label className="text-[10px] font-bold text-primary">First Month Charge (landlord input)</Label>
+              <Label className="text-xs font-bold text-primary">First month charge (landlord input)</Label>
               <Input
                 type="number"
                 value={firstMonthOverride}
@@ -265,7 +265,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold">Monthly Rent</Label>
+              <Label className="text-xs font-bold">Monthly rent</Label>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -278,13 +278,13 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold">Security Deposit</Label>
+              <Label className="text-xs font-bold">Security deposit</Label>
               <Input type="number" value={securityDeposit} onChange={(e) => setSecurityDeposit(e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50/90 p-3">
-            <Label className="text-[10px] font-bold text-amber-700">Opening Arrears</Label>
+            <Label className="text-xs font-bold text-amber-700">Opening arrears</Label>
             <Input
               type="number"
               value={openingBalance}
@@ -339,7 +339,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
         </div>
       </div>
 
-      <div className="mt-auto border-t border-border/60 bg-background/80 pt-4 backdrop-blur-sm">
+      <div className="mt-auto border-t border-border/60 bg-background pt-4">
         <div className="flex flex-col gap-2">
         {!tenant && (
           <Button
@@ -355,7 +355,7 @@ export function TenantForm({ tenant, onSubmit, onCancel, isLoading }: TenantForm
         )}
 
         <Button type="submit" disabled={isLoading || !canSave} className="w-full h-12 shadow-md">
-          {isLoading ? "Saving..." : "Save Tenant"}
+          {isLoading ? "Saving..." : "Save tenant"}
         </Button>
 
         <Button type="button" variant="ghost" onClick={onCancel} className="w-full h-12">

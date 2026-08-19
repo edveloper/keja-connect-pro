@@ -1,6 +1,5 @@
 import { PageContainer } from "@/components/layout/PageContainer";
 import UnitCard from "@/components/dashboard/UnitCard";
-import { StatsCard } from "@/components/dashboard/StatsCard";
 import RecordPaymentDialog from "@/components/tenants/RecordPaymentDialog";
 import { useDashboardData } from "@/hooks/useDashboard";
 import { useTotalExpenses } from "@/hooks/useExpenses";
@@ -11,43 +10,78 @@ import { buildAssistantQueue } from "@/lib/assistantQueue";
 import { AssistantPanel } from "@/components/intelligence/AssistantPanel";
 import {
   Building2,
-  AlertTriangle,
-  Banknote,
-  Wallet,
   ChevronDown,
-  Home,
-  DoorOpen,
-  ShieldCheck,
   Smartphone,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 import { useNavigate } from "react-router-dom";
 import { currentMonthKey, toMonthKey } from "@/lib/month";
 import { MonthSelector } from "@/components/layout/MonthSelector";
+import { LedgerSummary } from "@/components/dashboard/LedgerSummary";
+import { useTenantBalances } from "@/hooks/useTenantBalances";
+import { ShowMore, useProgressiveList } from "@/components/ui/show-more";
 import MpesaReconcileDialog from "@/components/payments/MpesaReconcileDialog";
+import { SetupChecklist } from "@/components/onboarding/SetupChecklist";
+import { useSetupStatus } from "@/hooks/useSetupStatus";
+import { shouldClearDismissal, shouldShowSetupGuide } from "@/lib/setup-progress";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
+  const { data: setup, isLoading: setupLoading } = useSetupStatus();
   const { data, isLoading } = useDashboardData(selectedDate);
+
+  // Rent per tenant, so lifetime arrears can be expressed in months behind.
+  const rentByTenant = useMemo(() => {
+    const map = new Map<string, number>();
+    (data?.units ?? []).forEach((u) => {
+      if (u.tenant_id) map.set(u.tenant_id, u.rent_amount ?? 0);
+    });
+    return map;
+  }, [data?.units]);
+  const { data: lifetimeBalances } = useTenantBalances(rentByTenant);
   const { data: thisMonthData } = useDashboardData(new Date());
   const { data: totalExpenses, isLoading: expensesLoading } = useTotalExpenses(selectedDate);
   const riskMonthKey = selectedDate ? toMonthKey(selectedDate) : currentMonthKey();
   const { summary: riskSummary } = useRiskSummary(riskMonthKey);
   const { data: reminderQueue = [] } = useReminderQueue(riskMonthKey);
 
-  const [occupiedOpen, setOccupiedOpen] = useState(false);
+  // Open on arrival: the list of who has paid is the reason to open this page.
+  const [occupiedOpen, setOccupiedOpen] = useState(true);
   const [vacantOpen, setVacantOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
 
   const [selectedUnit, setSelectedUnit] = useState<DashboardUnit | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
+
+  // Remembered per account so hiding the guide sticks across visits. Cleared
+  // automatically once setup is genuinely finished, so it cannot get wedged.
+  const dismissKey = setup?.userId ? `rentkonnect:setup-hidden:${setup.userId}` : null;
+  const [setupDismissed, setSetupDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!dismissKey) return;
+    setSetupDismissed(localStorage.getItem(dismissKey) === "1");
+  }, [dismissKey]);
+
+  useEffect(() => {
+    if (dismissKey && shouldClearDismissal(Boolean(setup?.isReady))) {
+      localStorage.removeItem(dismissKey);
+    }
+  }, [dismissKey, setup?.isReady]);
+
+  const dismissSetup = () => {
+    if (dismissKey) localStorage.setItem(dismissKey, "1");
+    setSetupDismissed(true);
+  };
 
 
   const naturalSort = (a: DashboardUnit, b: DashboardUnit) =>
@@ -110,118 +144,146 @@ export default function Dashboard() {
     [thisMonthData]
   );
 
+  // Both lists are drawn a page at a time. A 120-unit portfolio rendered every
+  // card on first paint before this.
+  const occupiedPage = useProgressiveList(sortedOccupied, {
+    resetKey: `${riskMonthKey}-occupied`,
+  });
+  const vacantPage = useProgressiveList(vacantUnits, {
+    resetKey: `${riskMonthKey}-vacant`,
+  });
+
   function openRecordPayment(unit: DashboardUnit) {
     setSelectedUnit(unit);
     setDialogOpen(true);
   }
 
+  // Until there is a tenant there is nothing to report, and figures of zero
+  // read as "all clear" rather than "not set up yet".
+  //
+  // The card is deliberately tied to the three required steps only. The paybill
+  // is optional — many landlords collect on a personal number — so keeping the
+  // card alive for it would leave a permanent, unclosable nag on the dashboard.
+  const isSetUp = setup?.isReady ?? false;
+
+  if (setupLoading) {
+    return (
+      <PageContainer title="Dashboard" subtitle="Property overview">
+        <div className="space-y-4">
+          <Skeleton className="h-40 rounded-lg" />
+          <Skeleton className="h-24 rounded-lg" />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (setup && shouldShowSetupGuide({ isReady: isSetUp, dismissed: setupDismissed })) {
+    return (
+      <PageContainer title="Dashboard" subtitle="Getting started">
+        <SetupChecklist status={setup} onDismiss={dismissSetup} />
+      </PageContainer>
+    );
+  }
+
   return (
-    <PageContainer title="Dashboard" subtitle="Property Overview">
+    <PageContainer title="Dashboard" subtitle="Property overview">
       <MonthSelector value={selectedDate} onChange={setSelectedDate} />
 
-      <div className="mb-6">
-        <Button className="w-full h-12" onClick={() => setReconcileOpen(true)}>
-          <Smartphone className="h-4 w-4 mr-2" />
-          Record payments from M-Pesa
-        </Button>
-      </div>
+      {isSetUp && (
+        <div className="mb-6">
+          <Button className="w-full h-12" onClick={() => setReconcileOpen(true)}>
+            <Smartphone className="h-4 w-4 mr-2" />
+            Record payments from M-Pesa
+          </Button>
+        </div>
+      )}
 
-      {/* Rent roll for the period. Billed = Collected + Owed, so the three
-          figures reconcile against each other on screen. */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        {isLoading || expensesLoading ? (
-          <>
-            <Skeleton className="h-24 rounded-xl" />
-            <Skeleton className="h-24 rounded-xl" />
-            <Skeleton className="h-24 rounded-xl" />
-            <Skeleton className="h-24 rounded-xl" />
-            <Skeleton className="h-24 rounded-xl col-span-2" />
-          </>
-        ) : (
-          <>
-            <StatsCard
-              label="Rent Billed"
-              value={formatKES(data?.stats.totalCharges || 0)}
-              icon={Banknote}
-              onClick={() => navigate("/reports")}
-            />
+      {isLoading || expensesLoading ? (
+        <div className="space-y-4 mb-6">
+          <Skeleton className="h-64 rounded-lg" />
+          <Skeleton className="h-20 rounded-lg" />
+        </div>
+      ) : (
+        <div className="space-y-4 mb-8">
+          <LedgerSummary
+            period={selectedDate ? format(selectedDate, "MMMM yyyy") : "All time"}
+            rows={[
+              {
+                label: "Rent billed",
+                value: data?.stats.totalCharges ?? 0,
+                note: `${data?.stats.occupiedUnits ?? 0} of ${data?.stats.totalUnits ?? 0} units occupied`,
+                onClick: () => navigate("/reports"),
+              },
+              {
+                label: "Collected",
+                value: data?.stats.totalAllocated ?? 0,
+                tone: "paid",
+                onClick: () => navigate("/reports"),
+              },
+              {
+                label: "Still owed",
+                value: data?.stats.totalBalance ?? 0,
+                tone: (data?.stats.totalBalance ?? 0) > 0 ? "owed" : undefined,
+                note:
+                  (data?.stats.totalCredit ?? 0) > 0
+                    ? `${formatKES(data?.stats.totalCredit ?? 0)} held in tenant credit`
+                    : undefined,
+                ruleAbove: true,
+                onClick: () => navigate("/tenants"),
+              },
+              {
+                label: "Expenses paid",
+                value: totalExpenses ?? 0,
+                note: `${upToDateThisMonth} of ${occupiedThisMonth} tenants up to date`,
+                onClick: () => navigate("/expenses"),
+              },
+              {
+                label: "Kept this period",
+                value: (data?.stats.totalAllocated ?? 0) - (totalExpenses ?? 0),
+                total: true,
+              },
+            ]}
+          />
 
-            <StatsCard
-              label="Collected"
-              value={formatKES(data?.stats.totalAllocated || 0)}
-              icon={Home}
-              variant="success"
-              onClick={() => navigate("/reports")}
-            />
-
-            <StatsCard
-              label="Still Owed"
-              value={formatKES(data?.stats.totalBalance || 0)}
-              icon={AlertTriangle}
-              variant={(data?.stats.totalBalance || 0) > 0 ? "danger" : "success"}
-              onClick={() => navigate("/tenants")}
-            />
-
-            <StatsCard
-              label={selectedDate ? "Expenses" : "All-Time Expenses"}
-              value={formatKES(totalExpenses || 0)}
-              icon={Wallet}
-              variant="danger"
-              onClick={() => navigate("/expenses")}
-            />
-
-            <div className="col-span-2">
-              <StatsCard
-                label="Units occupied"
-                value={`${data?.stats.occupiedUnits ?? 0} of ${data?.stats.totalUnits ?? 0}`}
-                hint={`${upToDateThisMonth} of ${occupiedThisMonth} tenants up to date this month`}
-                icon={Building2}
-                variant={
-                  occupiedThisMonth > 0 && upToDateThisMonth === occupiedThisMonth
-                    ? "success"
-                    : "default"
-                }
-                onClick={() => navigate("/tenants")}
-              />
-            </div>
-
-            <div className="col-span-2">
-              <StatsCard
-                label="Security Deposits Held"
-                value={formatKES(data?.stats.totalDeposits || 0)}
-                icon={ShieldCheck}
-                className="bg-accent text-accent-foreground border-accent shadow-sm"
-                onClick={() => navigate("/tenants")}
-              />
-            </div>
-          </>
-        )}
-      </div>
+          <button
+            type="button"
+            onClick={() => navigate("/tenants")}
+            className="surface-panel w-full p-4 flex items-center justify-between gap-3 text-left hover:bg-muted/40 transition-colors"
+          >
+            <span className="min-w-0">
+              <span className="block eyebrow">Deposits held</span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Money you are holding on behalf of tenants
+              </span>
+            </span>
+            <span className="text-sm font-semibold tabular-nums shrink-0">
+              {formatKES(data?.stats.totalDeposits ?? 0)}
+            </span>
+          </button>
+        </div>
+      )}
 
       {!isLoading ? (
         <div className="mb-8">
           <Collapsible open={assistantOpen} onOpenChange={setAssistantOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <ShieldCheck className="h-4 w-4" />
-                </div>
-                <span className="text-sm font-semibold">Landlord Assistant</span>
-                <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-lg text-left transition-colors hover:border-foreground/25">
+              <span className="flex items-baseline gap-2 min-w-0">
+                <span className="text-sm font-semibold">What needs doing</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
                   {assistantActions.length}
                 </span>
-              </div>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${assistantOpen ? "rotate-180" : ""}`} />
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform shrink-0",
+                  assistantOpen && "rotate-180"
+                )}
+                aria-hidden="true"
+              />
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3">
               <AssistantPanel
                 storageKey="assistant:dismissed:dashboard"
-                stats={[
-                  { label: "High Risk", value: String(riskSummary.high) },
-                  { label: "Pending Queue", value: String(pendingReminders) },
-                  { label: "Collection", value: `${collectionRate.toFixed(0)}%` },
-                  { label: "Vacant Units", value: String(data?.stats.vacantUnits || 0) },
-                ]}
                 actions={assistantActions}
                 onAction={(route) => navigate(route)}
               />
@@ -234,60 +296,90 @@ export default function Dashboard() {
       <div className="space-y-4">
         {isLoading ? (
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
           </div>
         ) : allUnits.length === 0 ? (
-          <div className="text-center py-12 px-6 bg-card rounded-2xl border border-dashed border-border">
-            <Building2 className="h-8 w-8 text-muted-foreground/60 mx-auto mb-4" />
-            <h3 className="font-semibold text-foreground mb-2">No units added yet</h3>
+          <div className="text-center py-12 px-6 bg-card rounded-lg border border-dashed border-border">
+            <Building2 className="h-8 w-8 text-muted-foreground/60 mx-auto mb-4" aria-hidden="true" />
+            <h3 className="font-semibold text-foreground mb-1">No units yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Add units to a property and your tenants will appear here.
+            </p>
+            <Button onClick={() => navigate("/properties")}>
+              <Building2 className="h-4 w-4 mr-2" />
+              Go to properties
+            </Button>
           </div>
         ) : (
           <>
             <Collapsible open={occupiedOpen} onOpenChange={setOccupiedOpen}>
-              <CollapsibleTrigger 
-                className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                    <Home className="h-4 w-4" />
-                  </div>
-                  <span className="text-sm font-semibold">Occupied Units</span>
-                  <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{occupiedUnits.length}</span>
-                </div>
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${occupiedOpen ? 'rotate-180' : ''}`} />
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-lg text-left transition-colors hover:border-foreground/25">
+                <span className="flex items-baseline gap-2 min-w-0">
+                  <span className="text-sm font-semibold">Occupied</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{occupiedUnits.length}</span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform shrink-0",
+                    occupiedOpen && "rotate-180"
+                  )}
+                  aria-hidden="true"
+                />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
-                {sortedOccupied.map((unit) => (
-                  <UnitCard
-                    key={unit.id}
-                    unit={unit}
-                    onRecordPayment={openRecordPayment}
+                {occupiedPage.visible.map((unit) => {
+                  const lifetime = unit.tenant_id
+                    ? lifetimeBalances?.get(unit.tenant_id)
+                    : undefined;
+                  return (
+                    <UnitCard
+                      key={unit.id}
+                      unit={unit}
+                      onRecordPayment={openRecordPayment}
+                      totalOwed={lifetime?.balance}
+                      monthsBehind={lifetime?.monthsBehind}
+                    />
+                  );
+                })}
+                {occupiedPage.hasMore && (
+                  <ShowMore
+                    remaining={occupiedPage.remaining}
+                    noun="unit"
+                    onClick={occupiedPage.showMore}
                   />
-                ))}
+                )}
               </CollapsibleContent>
             </Collapsible>
 
             <Collapsible open={vacantOpen} onOpenChange={setVacantOpen}>
-              <CollapsibleTrigger 
-                className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-xl shadow-sm hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-muted text-muted-foreground">
-                    <DoorOpen className="h-4 w-4" />
-                  </div>
-                  <span className="text-sm font-semibold">Vacant Units</span>
-                  <span className="text-xs font-bold text-muted-foreground bg-muted px-2.5 py-1 rounded-full">{vacantUnits.length}</span>
-                </div>
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${vacantOpen ? 'rotate-180' : ''}`} />
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card border border-border rounded-lg text-left transition-colors hover:border-foreground/25">
+                <span className="flex items-baseline gap-2 min-w-0">
+                  <span className="text-sm font-semibold">Vacant</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{vacantUnits.length}</span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform shrink-0",
+                    vacantOpen && "rotate-180"
+                  )}
+                  aria-hidden="true"
+                />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
-                {vacantUnits.map((unit) => (
+                {vacantPage.visible.map((unit) => (
                   <UnitCard
                     key={unit.id}
                     unit={unit}
                     onRecordPayment={openRecordPayment}
                   />
                 ))}
+                {vacantPage.hasMore && (
+                  <ShowMore
+                    remaining={vacantPage.remaining}
+                    noun="unit"
+                    onClick={vacantPage.showMore}
+                  />
+                )}
               </CollapsibleContent>
             </Collapsible>
           </>

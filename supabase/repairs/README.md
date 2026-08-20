@@ -12,6 +12,8 @@ needs `20260819120000_billing_start_date.sql`.
 | `01_shift_charge_months.sql` | Moves every existing `charge_month` and `applied_month` forward by one month | If your data was created before the F1 timezone fix — which is all data created by the app to date |
 | `02_remove_future_charges.sql` | Deletes rent charges dated after the current month | If a tenant statement shows a month that has not happened yet |
 | `03_reset_financials_for_user.sql` | Clears one landlord's charges, payments and balances, keeping properties, units, tenants and expenses | If a landlord wants to restart their books without losing their setup |
+| `04_delete_user_account.sql` | Verifies a full account deletion before and after | If a landlord wants their account and all data gone so they can sign up fresh |
+| `05_diagnose_user_delete.sql` | Finds and repairs foreign keys that block account deletion | If deleting a user fails with "Database error deleting user" |
 
 > **Run `01` at most once.** The billing migration already backfills correct
 > months, so shifting again moves those rows into the future. If you see a

@@ -29,6 +29,31 @@ export function toDateKey(date: Date): DateKey {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/**
+ * Local-time month key for a Postgres TIMESTAMPTZ value.
+ *
+ * `payments.payment_date` is TIMESTAMPTZ, so it arrives as an absolute instant
+ * (`2026-09-30T21:00:00+00:00`). In Nairobi that instant is 1 October, and the
+ * landlord who banked it considers it October money.
+ *
+ * Parsing the instant and reading local fields is correct HERE, and only here:
+ * a date-only `YYYY-MM-DD` string must never go through `new Date()`, because
+ * that parses as UTC midnight and shifts backwards a day east of Greenwich.
+ * Use the string directly for DATE columns; use this for TIMESTAMPTZ.
+ */
+export function timestampToMonthKey(value: string | null | undefined): MonthKey | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : toMonthKey(parsed);
+}
+
+/** Local-time `YYYY-MM-DD` for a Postgres TIMESTAMPTZ value. See above. */
+export function timestampToDateKey(value: string | null | undefined): DateKey | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : toDateKey(parsed);
+}
+
 /** The current calendar month, in local time. */
 export function currentMonthKey(): MonthKey {
   return toMonthKey(new Date());

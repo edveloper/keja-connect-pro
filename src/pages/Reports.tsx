@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { currentMonthKey, toDateKey, toMonthKey } from "@/lib/month";
+import { currentMonthKey, toDateKey, toMonthKey, timestampToMonthKey } from "@/lib/month";
 import { MonthSelector } from "@/components/layout/MonthSelector";
 import { LedgerSummary } from "@/components/dashboard/LedgerSummary";
 import { useChartTheme } from "@/lib/chart-theme";
@@ -96,15 +96,30 @@ export default function Reports() {
   const { data: annual } = useAnnualStatement(12);
   const chart = useChartTheme();
 
-  // Payments whose stated rent month falls in the selected period.
+  /**
+   * Payments that ARRIVED in the selected period.
+   *
+   * This used to filter on `payment_month` — the month a payment is tagged
+   * against — while the card above it read "money that actually arrived".
+   * Those are different things: rent for September handed over in November
+   * carries payment_month 2026-09 and payment_date 2026-11. Filtering on the
+   * tag and calling the result cash overstated a quiet month and understated
+   * the month the money landed.
+   *
+   * It also fed the daily chart, which groups by `payment_date`, so a set
+   * selected by tag could plot points outside the month being viewed.
+   *
+   * The accrual side does not come from here at all — it comes from charges
+   * and allocations in `dashboardData.stats` — so nothing else needs the tag.
+   */
   const filteredPayments = useMemo(() => {
     if (!paymentsData) return [];
-
     if (!monthKey) return paymentsData;
 
-    return paymentsData.filter(
-      (p) => p.payment_month === monthKey
-    );
+    // payment_date is TIMESTAMPTZ, not DATE, so the month has to be read in
+    // local time. 21:00Z on 30 September is 1 October in Nairobi, and slicing
+    // the raw string would file that payment under September.
+    return paymentsData.filter((p) => timestampToMonthKey(p.payment_date) === monthKey);
   }, [paymentsData, monthKey]);
 
   // Was a hard slice(0, 5) with no way to reach the rest.
@@ -164,6 +179,25 @@ export default function Reports() {
     () => (dashboardData?.units ?? []).filter((u) => u.tenant_id && u.balance > 0).length,
     [dashboardData]
   );
+
+  /**
+   * Explains why "Still owed" is not simply rent due minus paid off.
+   *
+   * Tenants in credit are deliberately not netted against tenants in arrears:
+   * you cannot spend one tenant's overpayment to settle another's debt, so
+   * collapsing the two into one figure would flatter the number and hide who
+   * actually needs chasing. "Still owed" counts only the tenants who are
+   * behind; the credit is reported alongside it instead.
+   */
+  const arrearsNote = useMemo(() => {
+    const behind = `${tenantsInArrears} ${
+      tenantsInArrears === 1 ? "tenant is" : "tenants are"
+    } behind`;
+
+    return totalCredit > 0
+      ? `${behind}. A separate ${formatKES(totalCredit)} sits in credit and is not subtracted here.`
+      : behind;
+  }, [tenantsInArrears, totalCredit]);
 
   const expensesByCategory = useMemo(() => {
     return (
@@ -507,56 +541,60 @@ export default function Reports() {
           <TabsContent value="money" className="space-y-5 mt-0 focus-visible:outline-none">
             {/* Same ledger shape as the dashboard, so the two screens agree on
                 what the figures mean and how they add up. */}
+            {/* Card 1 answers "are my tenants paying their rent?" — it is tied
+                to the month the rent was FOR, whenever the money turned up. */}
             <LedgerSummary
-              period={dateLabel}
+              period={selectedDate ? `${dateLabel} rent` : "All-time rent"}
               rows={[
                 {
-                  label: "Rent billed",
+                  label: "Rent due",
                   value: billedAmount,
                   note: `${occupiedUnits} of ${totalUnits} units occupied`,
                 },
                 {
-                  label: "Applied to that rent",
+                  label: "Paid off",
                   value: appliedAmount,
                   tone: "paid",
                   note:
                     collectionRate > 0
-                      ? `${collectionRate.toFixed(0)}% of what was billed`
-                      : undefined,
+                      ? `${collectionRate.toFixed(0)}% of it — counting rent paid late or early`
+                      : "No payments matched to this month's rent yet",
                 },
                 {
                   label: "Still owed",
                   value: outstandingBalance,
                   tone: outstandingBalance > 0 ? "owed" : undefined,
-                  note:
-                    totalCredit > 0
-                      ? `${formatKES(totalCredit)} held in tenant credit`
-                      : `${tenantsInArrears} ${tenantsInArrears === 1 ? "tenant" : "tenants"} behind`,
+                  note: arrearsNote,
                   ruleAbove: true,
                   onClick: () => navigate("/tenants"),
                 },
               ]}
             />
 
+            {/* Card 2 answers "what did I actually bank?" — tied to the day the
+                money moved, whatever month's rent it was for. Both cards are
+                true; they are simply answering different questions. */}
             <LedgerSummary
-              period="Cash"
+              period={selectedDate ? `Cash in ${dateLabel}` : "Cash, all time"}
               rows={[
                 {
-                  label: "Received",
+                  label: "Money in",
                   value: cashReceived,
                   tone: "paid",
-                  note: "Money that actually arrived in the period",
+                  note: selectedDate
+                    ? `Everything banked in ${format(selectedDate, "MMMM")}, whichever month's rent it settled`
+                    : "Every payment ever banked",
                 },
                 {
-                  label: "Expenses paid",
+                  label: "Money out",
                   value: totalExpensesAmount,
                   note: topExpenseCategories[0]
                     ? `Mostly ${topExpenseCategories[0].name}`
-                    : undefined,
+                    : "Expenses you recorded as paid",
                   onClick: () => navigate("/expenses"),
                 },
                 {
-                  label: isProfit ? "Kept this period" : "Short this period",
+                  label: isProfit ? "Kept" : "Short",
                   value: Math.abs(netIncome),
                   total: true,
                 },

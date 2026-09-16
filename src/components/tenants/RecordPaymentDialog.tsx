@@ -7,12 +7,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, Info } from "lucide-react";
 import {
   findPaymentByMpesaCode,
+  findPossibleDuplicatePayment,
   useCreatePayment,
   type DuplicatePayment,
+  type PossibleDuplicate,
 } from "@/hooks/usePayments";
 import { useTenantLedger } from "@/hooks/useTenantLedger";
 import { formatKES } from "@/lib/number-formatter";
-import { currentDateKey, currentMonthKey, formatMonthLabel } from "@/lib/month";
+import { currentDateKey, currentMonthKey, formatMonthLabel, parseDateKey } from "@/lib/month";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { PaymentDialogTenant } from "./types";
@@ -30,6 +32,8 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
   const [mpesaCode, setMpesaCode] = useState("");
   const [note, setNote] = useState("");
   const [duplicate, setDuplicate] = useState<DuplicatePayment | null>(null);
+  const [possible, setPossible] = useState<PossibleDuplicate | null>(null);
+  const [overrode, setOverrode] = useState(false);
 
   const createPayment = useCreatePayment();
   const { data: ledger } = useTenantLedger(open ? tenant.tenant_id : null);
@@ -41,6 +45,8 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
     setMpesaCode("");
     setNote("");
     setDuplicate(null);
+    setPossible(null);
+    setOverrode(false);
   }
 
   // Warn about a code that has already been recorded before the user submits,
@@ -66,6 +72,39 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
 
   const numericAmount = Math.round(Number(amount));
   const hasAmount = Number.isFinite(numericAmount) && numericAmount > 0;
+
+  /**
+   * Look for a payment of the same amount, for this tenant, on the same day.
+   *
+   * The M-Pesa check above only runs when a code is typed, and most payments
+   * are entered without one — so the commonest duplicate of all went unnoticed
+   * until it showed up in the books as inflated collections.
+   */
+  useEffect(() => {
+    if (!open || !hasAmount) {
+      setPossible(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const match = await findPossibleDuplicatePayment(
+        tenant.tenant_id,
+        numericAmount,
+        paymentDate
+      );
+      if (!cancelled) {
+        setPossible(match);
+        // A changed amount or date is a different payment; make them look again.
+        setOverrode(false);
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [open, hasAmount, numericAmount, paymentDate, tenant.tenant_id]);
 
   /**
    * Where this payment will actually land. Payments clear the oldest unpaid
@@ -121,6 +160,16 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
       },
       {
         onSuccess: () => {
+          // The dialog used to close with no acknowledgement at all, which is
+          // what produced the duplicates: no confirmation, so the landlord
+          // re-recorded the payment to be sure it had saved.
+          toast({
+            title: `${formatKES(numericAmount)} recorded`,
+            description: `${tenant.tenant_name} · ${format(
+              parseDateKey(paymentDate),
+              "d MMM yyyy"
+            )}`,
+          });
           onOpenChange(false);
           reset();
         },
@@ -250,6 +299,35 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
             </Alert>
           )}
 
+          {/* Soft warning: same tenant, same amount, same day. Unlike an M-Pesa
+              code clash this is not proof of a duplicate — a tenant can pay the
+              same amount twice — so it asks rather than blocks. */}
+          {!duplicate && possible && !overrode && (
+            <Alert className="border-warning/50 bg-warning/10">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <AlertDescription className="text-xs space-y-2">
+                <span className="block">
+                  You already recorded {formatKES(possible.amount)} for {tenant.tenant_name} on{" "}
+                  {format(new Date(possible.paymentDate), "d MMM yyyy")}
+                  {" "}at {format(new Date(possible.recordedAt), "h:mm a")}.
+                </span>
+                <span className="block text-muted-foreground">
+                  If that was this same payment, close this and nothing is lost. Recording it
+                  twice overstates what you have collected.
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={() => setOverrode(true)}
+                >
+                  This is a different payment
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-1">
             <Label htmlFor="payment-note" className="text-xs font-bold">
               Note (optional)
@@ -265,7 +343,12 @@ export default function RecordPaymentDialog({ open, onOpenChange, tenant }: Prop
           <Button
             className="w-full h-11 shadow-sm"
             onClick={handleSubmit}
-            disabled={createPayment.isPending || !hasAmount || Boolean(duplicate)}
+            disabled={
+              createPayment.isPending ||
+              !hasAmount ||
+              Boolean(duplicate) ||
+              Boolean(possible && !overrode)
+            }
           >
             {createPayment.isPending ? "Recording..." : "Record payment"}
           </Button>

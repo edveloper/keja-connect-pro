@@ -10,6 +10,7 @@ import {
   parseDateKey,
   toDateKey,
   toMonthKey,
+  timestampToMonthKey,
 } from "./month";
 
 // These tests are the regression guard for F1. The suite runs under
@@ -149,5 +150,34 @@ describe("formatMonthLabel", () => {
   it("renders a readable month and year", () => {
     expect(formatMonthLabel("2026-08")).toContain("2026");
     expect(formatMonthLabel("2026-08")).toMatch(/August/i);
+  });
+});
+
+describe("timestampToMonthKey", () => {
+  // Tests run under TZ=Africa/Nairobi (vite.config.ts), which is UTC+3.
+
+  it("reads the local month, not the UTC one", () => {
+    // 21:00Z on 30 September is 00:00 on 1 October in Nairobi.
+    expect(timestampToMonthKey("2026-09-30T21:00:00+00:00")).toBe("2026-10");
+  });
+
+  it("does not shift a mid-month timestamp", () => {
+    expect(timestampToMonthKey("2026-09-15T21:00:00+00:00")).toBe("2026-09");
+  });
+
+  it("handles a timestamp with microseconds", () => {
+    expect(timestampToMonthKey("2026-03-05T13:54:54.118399+00:00")).toBe("2026-03");
+  });
+
+  it("is null-safe", () => {
+    expect(timestampToMonthKey(null)).toBeNull();
+    expect(timestampToMonthKey("")).toBeNull();
+    expect(timestampToMonthKey("not a date")).toBeNull();
+  });
+
+  it("differs from a naive string slice at a month boundary", () => {
+    const ts = "2026-09-30T21:00:00+00:00";
+    expect(ts.slice(0, 7)).toBe("2026-09");
+    expect(timestampToMonthKey(ts)).toBe("2026-10");
   });
 });

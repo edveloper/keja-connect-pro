@@ -4,7 +4,7 @@ import { formatKES } from "@/lib/number-formatter";
 interface Row {
   label: string;
   value: number;
-  /** A hint shown under the label. */
+  /** A hint shown under the label. Wraps, so it can carry a real explanation. */
   note?: string;
   tone?: "default" | "owed" | "paid";
   /** Draw a rule above this row — used to separate a subtotal. */
@@ -62,7 +62,7 @@ export function LedgerSummary({ period, rows, className }: Props) {
                   {row.label}
                 </span>
                 {row.note && (
-                  <span className="block text-xs text-muted-foreground/80 truncate mt-0.5">
+                  <span className="block text-xs text-muted-foreground/80 mt-0.5 leading-snug">
                     {row.note}
                   </span>
                 )}

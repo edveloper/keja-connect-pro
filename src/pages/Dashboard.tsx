@@ -21,10 +21,11 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 import { useNavigate } from "react-router-dom";
-import { currentMonthKey, toMonthKey } from "@/lib/month";
+import { currentMonthKey, toMonthKey, timestampToMonthKey } from "@/lib/month";
 import { MonthSelector } from "@/components/layout/MonthSelector";
 import { LedgerSummary } from "@/components/dashboard/LedgerSummary";
 import { useTenantBalances } from "@/hooks/useTenantBalances";
+import { usePayments } from "@/hooks/usePayments";
 import { ShowMore, useProgressiveList } from "@/components/ui/show-more";
 import MpesaReconcileDialog from "@/components/payments/MpesaReconcileDialog";
 import { SetupChecklist } from "@/components/onboarding/SetupChecklist";
@@ -144,6 +145,45 @@ export default function Dashboard() {
     [thisMonthData]
   );
 
+  /**
+   * Cash actually banked in the selected month.
+   *
+   * The closing line used to read `totalAllocated - totalExpenses`: rent
+   * matched to this month's charges, minus expenses recorded on the day they
+   * were paid. Subtracting a cash figure from an accrual one gives a number
+   * that answers no question, and it disagreed with the identically-labelled
+   * row on Reports, which was built from cash. Both screens now use cash.
+   *
+   * payment_date is TIMESTAMPTZ, so the month is read in local time: 21:00Z on
+   * 30 September is 1 October in Nairobi, and reading the raw string would file
+   * that payment under September.
+   */
+  const { data: paymentsData } = usePayments();
+
+  const cashReceived = useMemo(() => {
+    if (!paymentsData) return 0;
+    const key = selectedDate ? toMonthKey(selectedDate) : null;
+
+    return paymentsData
+      .filter((p) => !key || timestampToMonthKey(p.payment_date) === key)
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  }, [paymentsData, selectedDate]);
+
+  /**
+   * Tenants in credit are never netted against tenants in arrears — one
+   * tenant's overpayment cannot settle another's debt — so "Still owed"
+   * counts only who is behind, and the credit is reported beside it.
+   */
+  const arrearsNote = useMemo(() => {
+    const behind = (data?.units ?? []).filter((u) => u.tenant_id && u.balance > 0).length;
+    const credit = data?.stats.totalCredit ?? 0;
+    const phrase = `${behind} ${behind === 1 ? "tenant is" : "tenants are"} behind`;
+
+    return credit > 0
+      ? `${phrase}. A separate ${formatKES(credit)} sits in credit and is not subtracted here.`
+      : phrase;
+  }, [data]);
+
   // Both lists are drawn a page at a time. A 120-unit portfolio rendered every
   // card on first paint before this.
   const occupiedPage = useProgressiveList(sortedOccupied, {
@@ -198,6 +238,40 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* A unit with two active tenants shows one card, so the other tenant is
+          invisible on the rent roll. Their money is counted either way now,
+          but silence about it is how 22,000 of arrears went unexplained across
+          two screens. Almost always it means someone moved out and was never
+          archived. */}
+      {(data?.sharedUnitTenants?.length ?? 0) > 0 && (
+        <div className="surface-panel border-warning/50 bg-warning/10 p-4 mb-4">
+          <p className="text-sm font-semibold text-foreground">
+            {data!.sharedUnitTenants.length === 1
+              ? "1 tenant shares a unit and has no card below"
+              : `${data!.sharedUnitTenants.length} tenants share a unit and have no card below`}
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {data!.sharedUnitTenants.map((t) => (
+              <li key={t.tenantId} className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{t.tenantName}</span>
+                {" — Unit "}
+                {t.unitNumber} · {t.propertyName}, where {t.shownInstead} is shown instead
+                {t.balance > 0 && (
+                  <span className="text-destructive font-semibold">
+                    {" · owes "}
+                    {formatKES(t.balance)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2.5 text-xs text-muted-foreground">
+            Their rent and arrears are included in the totals above. If someone has moved out,
+            archive them in Settings so the unit shows one tenant.
+          </p>
+        </div>
+      )}
+
       {isLoading || expensesLoading ? (
         <div className="space-y-4 mb-6">
           <Skeleton className="h-64 rounded-lg" />
@@ -205,41 +279,59 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-4 mb-8">
+          {/* Two cards, matching Reports, because these are two questions.
+              Rent is tied to the month it was FOR, whenever it was paid; cash
+              is tied to the day it arrived, whatever month it settled. The
+              single card these replaced mixed the two and closed on a total
+              that subtracted cash expenses from accrual rent. */}
           <LedgerSummary
-            period={selectedDate ? format(selectedDate, "MMMM yyyy") : "All time"}
+            period={selectedDate ? `${format(selectedDate, "MMMM yyyy")} rent` : "All-time rent"}
             rows={[
               {
-                label: "Rent billed",
+                label: "Rent due",
                 value: data?.stats.totalCharges ?? 0,
                 note: `${data?.stats.occupiedUnits ?? 0} of ${data?.stats.totalUnits ?? 0} units occupied`,
                 onClick: () => navigate("/reports"),
               },
               {
-                label: "Collected",
+                label: "Paid off",
                 value: data?.stats.totalAllocated ?? 0,
                 tone: "paid",
+                note: `${upToDateThisMonth} of ${occupiedThisMonth} tenants fully up to date`,
                 onClick: () => navigate("/reports"),
               },
               {
                 label: "Still owed",
                 value: data?.stats.totalBalance ?? 0,
                 tone: (data?.stats.totalBalance ?? 0) > 0 ? "owed" : undefined,
-                note:
-                  (data?.stats.totalCredit ?? 0) > 0
-                    ? `${formatKES(data?.stats.totalCredit ?? 0)} held in tenant credit`
-                    : undefined,
+                note: arrearsNote,
                 ruleAbove: true,
                 onClick: () => navigate("/tenants"),
               },
+            ]}
+          />
+
+          <LedgerSummary
+            period={selectedDate ? `Cash in ${format(selectedDate, "MMMM")}` : "Cash, all time"}
+            rows={[
               {
-                label: "Expenses paid",
+                label: "Money in",
+                value: cashReceived,
+                tone: "paid",
+                note: selectedDate
+                  ? `Everything banked in ${format(selectedDate, "MMMM")}, whichever month's rent it settled`
+                  : "Every payment ever banked",
+                onClick: () => navigate("/reports"),
+              },
+              {
+                label: "Money out",
                 value: totalExpenses ?? 0,
-                note: `${upToDateThisMonth} of ${occupiedThisMonth} tenants up to date`,
+                note: "Expenses you recorded as paid",
                 onClick: () => navigate("/expenses"),
               },
               {
-                label: "Kept this period",
-                value: (data?.stats.totalAllocated ?? 0) - (totalExpenses ?? 0),
+                label: (cashReceived - (totalExpenses ?? 0)) >= 0 ? "Kept" : "Short",
+                value: Math.abs(cashReceived - (totalExpenses ?? 0)),
                 total: true,
               },
             ]}

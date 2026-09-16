@@ -1,3 +1,4 @@
+import { timestampToDateKey } from "@/lib/month";
 // src/utils/exports/exportLandlordDocuments.ts
 //
 // Two exports, each with a distinct job.
@@ -181,7 +182,10 @@ export async function exportOperationsPack(payload: OperationsPackPayload) {
     wb,
     "Collections",
     payload.payments.map((p) => ({
-      Date: p.payment_date?.slice(0, 10) ?? "",
+      // Local date, not the raw UTC prefix: a payment banked at midnight on
+      // 1 October stores as 2026-09-30T21:00Z and would otherwise print as
+      // 30 September on a statement going to a bank.
+      Date: timestampToDateKey(p.payment_date) ?? "",
       Amount: money(p.amount),
       RentMonth: p.payment_month ?? "",
       MpesaCode: p.mpesa_code ?? "",

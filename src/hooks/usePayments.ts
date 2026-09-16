@@ -102,6 +102,69 @@ export async function findPaymentByMpesaCode(
   };
 }
 
+/** A payment that looks like the one being entered. Advisory, not a constraint. */
+export interface PossibleDuplicate {
+  paymentId: string;
+  amount: number;
+  paymentDate: string;
+  recordedAt: string;
+}
+
+/**
+ * Same tenant, same amount, same calendar day — the shape of a payment entered
+ * twice.
+ *
+ * The M-Pesa code is a hard duplicate check, backed by a unique index, and it
+ * works well. But it only fires when a code is typed, and most payments are
+ * entered by hand with no code at all. That left the commonest duplicate of
+ * all completely unguarded: the landlord records a payment, the dialog closes
+ * without confirming anything, they are not sure it saved, and they record it
+ * again. Three tenants were double-credited that way in a single morning,
+ * 25 to 47 seconds apart.
+ *
+ * This is deliberately a warning rather than a block. A tenant genuinely can
+ * pay the same amount twice in one day — two units, or two instalments — so
+ * the landlord is told what already exists and decides for themselves.
+ *
+ * payment_date is TIMESTAMPTZ, so the day is bounded in local time rather than
+ * compared as a string.
+ */
+export async function findPossibleDuplicatePayment(
+  tenantId: string,
+  amount: number,
+  dateKey: string
+): Promise<PossibleDuplicate | null> {
+  if (!tenantId || !Number.isFinite(amount) || amount <= 0 || !dateKey) return null;
+
+  // parseDateKey returns an Invalid Date rather than throwing on bad input.
+  const dayStart = parseDateKey(dateKey);
+  if (Number.isNaN(dayStart.getTime())) return null;
+
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  const { data, error } = await supabase
+    .from("payments")
+    .select("id, amount, payment_date, created_at")
+    .eq("tenant_id", tenantId)
+    .eq("amount", Math.round(amount))
+    .gte("payment_date", dayStart.toISOString())
+    .lt("payment_date", dayEnd.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (error) return null;
+  const row = (data ?? [])[0];
+  if (!row) return null;
+
+  return {
+    paymentId: row.id,
+    amount: row.amount,
+    paymentDate: row.payment_date,
+    recordedAt: row.created_at,
+  };
+}
+
 export function useCreatePayment() {
   const qc = useQueryClient();
 

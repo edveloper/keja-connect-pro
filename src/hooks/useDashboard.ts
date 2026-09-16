@@ -48,9 +48,29 @@ export interface DashboardStats {
   totalDeposits: number;
 }
 
+
+/**
+ * An active tenant sharing a unit with someone else, so no unit card shows them.
+ *
+ * Their money still counts. Surfacing them is the point: a tenant hidden from
+ * the rent roll used to be hidden from the totals too, which silently
+ * understated arrears.
+ */
+export interface SharedUnitTenant {
+  tenantId: string;
+  tenantName: string;
+  unitNumber: string;
+  propertyName: string;
+  balance: number;
+  /** The tenant whose card the unit shows instead. */
+  shownInstead: string;
+}
+
 export interface DashboardResult {
   units: DashboardUnit[];
   stats: DashboardStats;
+  /** Empty in normal operation. Non-empty means data needs attention. */
+  sharedUnitTenants: SharedUnitTenant[];
 }
 
 /* ============================================================================
@@ -118,7 +138,7 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
     queryKey: ["dashboard", dateKey],
     queryFn: async () => {
       const userId = await getUserIdOrNull();
-      if (!userId) return { units: [], stats: EMPTY_STATS };
+      if (!userId) return { units: [], stats: EMPTY_STATS, sharedUnitTenants: [] };
 
       /* --- 1. Properties --- */
       const { data: properties, error: propertiesError } = await supabase
@@ -128,7 +148,7 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
       if (propertiesError) throw propertiesError;
 
       const propertyIds = (properties ?? []).map((p) => p.id);
-      if (!propertyIds.length) return { units: [], stats: EMPTY_STATS };
+      if (!propertyIds.length) return { units: [], stats: EMPTY_STATS, sharedUnitTenants: [] };
 
       /* --- 2. Units --- */
       const { data: unitsData, error: unitsError } = await supabase
@@ -140,7 +160,7 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
 
       const units = unitsData ?? [];
       const unitIds = units.map((u) => u.id);
-      if (!unitIds.length) return { units: [], stats: EMPTY_STATS };
+      if (!unitIds.length) return { units: [], stats: EMPTY_STATS, sharedUnitTenants: [] };
 
       /* --- 3. Tenants (current occupants only) --- */
       const { data: tenantsData, error: tenantsError } = await supabase
@@ -154,28 +174,33 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
 
       const tenants = tenantsData ?? [];
 
-      // One occupant per unit. If a unit somehow has two active tenants, the
-      // most recent wins and the other is surfaced rather than silently
-      // dropped from every total on the page.
+      // A unit card can only show one occupant, so the most recently added
+      // tenant wins the card. That is a DISPLAY rule and nothing more.
+      //
+      // It used to decide the money as well: only the winners' ids were passed
+      // to the charges and allocations queries, so a tenant who shared a unit
+      // had their arrears excluded from every total on the Dashboard and
+      // Reports. Two tenants sharing two units hid 22,000 of real debt, while
+      // the Tenants screen — which counts tenants directly — reported it
+      // correctly, so the two screens disagreed with no explanation on either.
+      //
+      // Now every active tenant's money counts, and the ones without a card are
+      // returned so the UI can say so out loud.
       const tenantByUnit = new Map<string, (typeof tenants)[number]>();
-      const duplicateUnitIds = new Set<string>();
+      const displaced: Array<{ tenant: (typeof tenants)[number]; shownInstead: string }> = [];
+
       tenants.forEach((tenant) => {
         if (!tenant.unit_id) return;
-        if (tenantByUnit.has(tenant.unit_id)) {
-          duplicateUnitIds.add(tenant.unit_id);
+        const holder = tenantByUnit.get(tenant.unit_id);
+        if (holder) {
+          displaced.push({ tenant, shownInstead: holder.name });
           return;
         }
         tenantByUnit.set(tenant.unit_id, tenant);
       });
 
-      if (duplicateUnitIds.size > 0) {
-        console.warn(
-          `[dashboard] ${duplicateUnitIds.size} unit(s) have more than one active tenant. ` +
-            `Only the most recent is counted. Unit ids: ${[...duplicateUnitIds].join(", ")}`
-        );
-      }
-
-      const tenantIds = [...tenantByUnit.values()].map((t) => t.id);
+      // Every active tenant, card or no card.
+      const tenantIds = tenants.map((t) => t.id);
       if (!tenantIds.length) {
         const dashboardUnits = units.map((unit) => vacantUnit(unit));
         return {
@@ -185,6 +210,7 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
             totalUnits: dashboardUnits.length,
             vacantUnits: dashboardUnits.length,
           },
+          sharedUnitTenants: [],
         };
       }
 
@@ -247,23 +273,63 @@ export function useDashboardData(selectedDate: Date | null = new Date()) {
       });
 
       /* --- 8. Stats --- */
+      //
+      // Unit counts come from units; money comes from tenants. Those are
+      // different populations whenever a unit has two active tenants, and
+      // conflating them is what hid the arrears.
       const occupied = dashboardUnits.filter((u) => u.tenant_id);
+
+      const money = tenants.reduce(
+        (acc, tenant) => {
+          const charged = chargedByTenant.get(tenant.id) ?? 0;
+          const allocated = allocatedByTenant.get(tenant.id) ?? 0;
+          const balance = charged - allocated;
+
+          acc.totalCharges += charged;
+          acc.totalAllocated += allocated;
+          acc.totalBalance += Math.max(balance, 0);
+          acc.totalCredit += Math.max(-balance, 0);
+          acc.totalDeposits += toNumber(tenant.security_deposit);
+          return acc;
+        },
+        {
+          totalCharges: 0,
+          totalAllocated: 0,
+          totalBalance: 0,
+          totalCredit: 0,
+          totalDeposits: 0,
+        }
+      );
 
       const stats: DashboardStats = {
         totalUnits: dashboardUnits.length,
         occupiedUnits: occupied.length,
         vacantUnits: dashboardUnits.length - occupied.length,
-        totalCharges: occupied.reduce((s, u) => s + u.total_charges, 0),
-        totalAllocated: occupied.reduce((s, u) => s + u.total_allocated, 0),
-        totalBalance: occupied.reduce((s, u) => s + Math.max(u.balance, 0), 0),
-        totalCredit: occupied.reduce((s, u) => s + Math.max(-u.balance, 0), 0),
-        totalDeposits: [...tenantByUnit.values()].reduce(
-          (s, t) => s + toNumber(t.security_deposit),
-          0
-        ),
+        totalCharges: Math.round(money.totalCharges),
+        totalAllocated: Math.round(money.totalAllocated),
+        totalBalance: Math.round(money.totalBalance),
+        totalCredit: Math.round(money.totalCredit),
+        totalDeposits: Math.round(money.totalDeposits),
       };
 
-      return { units: dashboardUnits, stats };
+      const sharedUnitTenants: SharedUnitTenant[] = displaced.map(({ tenant, shownInstead }) => {
+        const charged = chargedByTenant.get(tenant.id) ?? 0;
+        const allocated = allocatedByTenant.get(tenant.id) ?? 0;
+        const unit = tenant.unit_id
+          ? units.find((u) => u.id === tenant.unit_id)
+          : undefined;
+
+        return {
+          tenantId: tenant.id,
+          tenantName: tenant.name,
+          unitNumber: unit?.unit_number ?? "?",
+          propertyName: unit?.properties?.name ?? "Unknown",
+          balance: Math.round(charged - allocated),
+          shownInstead,
+        };
+      });
+
+      return { units: dashboardUnits, stats, sharedUnitTenants };
     },
     staleTime: 30_000,
     refetchOnWindowFocus: true,

@@ -36,6 +36,18 @@ export default function Privacy() {
           </section>
 
           <section>
+            <h2 className="eyebrow mb-2">Who runs RentKonnect</h2>
+            <p className="text-muted-foreground">
+              RentKonnect is run by Eddie Ezekiel Ochieng, in Kenya. For anything on this page,
+              write to{" "}
+              <a className="text-foreground underline" href="mailto:eddie.ochieng@usalama-voice.com">
+                eddie.ochieng@usalama-voice.com
+              </a>
+              . Last updated 10 October 2026.
+            </p>
+          </section>
+
+          <section>
             <h2 className="eyebrow mb-2">What is stored</h2>
             <p className="text-muted-foreground">
               Your properties and units, your tenants' names and phone numbers, the rent
@@ -65,6 +77,17 @@ export default function Privacy() {
           </section>
 
           <section>
+            <h2 className="eyebrow mb-2">The services that help run it</h2>
+            <p className="text-muted-foreground">
+              Supabase stores your records and handles signing in, and Vercel hosts the app. Google
+              Analytics counts visits to the pages of rentkonnect.co.ke (which pages, from what kind
+              of device, roughly where) and never sees your records. WhatsApp reminders are sent
+              from your own phone, not through us. Some of these services keep data on servers
+              outside Kenya, under their own security commitments.
+            </p>
+          </section>
+
+          <section>
             <h2 className="eyebrow mb-2">Your side of it</h2>
             <p className="text-muted-foreground">
               Holding tenant details makes you responsible for them under Kenya's Data
@@ -81,6 +104,15 @@ export default function Privacy() {
               Moving a tenant out keeps their history so your past months still add up.
               Deleting a tenant erases them and everything attached to them, permanently and
               immediately. If you want your whole account removed, ask and it will be done.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="eyebrow mb-2">Your rights</h2>
+            <p className="text-muted-foreground">
+              Under Kenya&apos;s Data Protection Act you can ask to see the information held about
+              you, have it corrected, or have it deleted. If you are unhappy with how it is handled,
+              you can complain to the Office of the Data Protection Commissioner (odpc.go.ke).
             </p>
           </section>
 

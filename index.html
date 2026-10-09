@@ -61,11 +61,28 @@
         window.gtag('js', new Date());
         window.gtag('config', id);
       })();
+
+      /*
+        Public pages arrive already rendered (scripts/prerender.mjs). A signed-in
+        landlord should not glimpse the landing page while the app loads, so if a
+        saved session exists the prerendered page is hidden until the app paints.
+      */
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          if (/^sb-.+-auth-token$/.test(localStorage.key(i) || '')) {
+            document.documentElement.classList.add('has-session');
+            break;
+          }
+        }
+      } catch (e) { /* storage unavailable: treat as signed out */ }
     </script>
+    <style>
+      html.has-session #prerender { display: none; }
+    </style>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root"><!-- prerender --></div>
     <noscript>RentKonnect needs JavaScript to run. Please enable it and reload the page.</noscript>
 
     <script type="module" src="/src/main.tsx"></script>

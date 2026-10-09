@@ -11,6 +11,11 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  // Build-time prerender (src/entry-server.tsx): react-helmet-async ships as
+  // CommonJS, which Node can't import by name, so it is bundled into the SSR build.
+  ssr: {
+    noExternal: ["react-helmet-async"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -20,6 +20,8 @@ import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
+import Landing from "./pages/Landing";
+import Terms from "./pages/Terms";
 
 
 // Pages (Private)
@@ -114,6 +116,7 @@ const App = () => {
             <Route path="/help" element={<Help />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/auth" element={!session ? <AuthPage /> : <Navigate to="/" replace />} />
 
             {session ? (
@@ -126,9 +129,9 @@ const App = () => {
                 <Route path="/settings" element={<Settings />} />
               </>
             ) : (
-              // Send signed-out visitors to the login page rather than a 404.
+              // Signed out: the root explains what this is; app pages send to sign-in.
               <>
-                <Route path="/" element={<Navigate to="/auth" replace />} />
+                <Route path="/" element={<Landing />} />
                 <Route path="/properties" element={<Navigate to="/auth" replace />} />
                 <Route path="/tenants" element={<Navigate to="/auth" replace />} />
                 <Route path="/expenses" element={<Navigate to="/auth" replace />} />

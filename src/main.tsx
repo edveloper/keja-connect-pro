@@ -3,7 +3,12 @@ import App from "./App.tsx";
 import "./index.css";
 import { HelmetProvider } from "react-helmet-async";
 
-createRoot(document.getElementById("root")!).render(
+// Public pages ship prerendered markup in #root (scripts/prerender.mjs); the app
+// takes over from a clean container rather than rendering beside it.
+const rootElement = document.getElementById("root")!;
+rootElement.innerHTML = "";
+
+createRoot(rootElement).render(
   <HelmetProvider>
     <App />
   </HelmetProvider>

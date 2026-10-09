@@ -1,6 +1,14 @@
 {
+  "buildCommand": "npm run build",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/auth", "destination": "/app" },
+    { "source": "/properties", "destination": "/app" },
+    { "source": "/tenants", "destination": "/app" },
+    { "source": "/expenses", "destination": "/app" },
+    { "source": "/reports", "destination": "/app" },
+    { "source": "/settings", "destination": "/app" }
   ],
   "headers": [
     {
@@ -16,6 +24,10 @@
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
         { "key": "Content-Type", "value": "application/manifest+json" }
       ]
+    },
+    {
+      "source": "/(auth|properties|tenants|expenses|reports|settings|app)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
     },
     {
       "source": "/(.*)",

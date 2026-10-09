@@ -1,7 +1,9 @@
 User-agent: *
 Allow: /
 
-# Signed-in areas render nothing useful to a crawler and should not be indexed.
+# Sign-in and the signed-in areas render nothing useful to a crawler and are
+# also served with noindex.
+Disallow: /auth
 Disallow: /tenants
 Disallow: /properties
 Disallow: /expenses

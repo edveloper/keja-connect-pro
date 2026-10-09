@@ -1,0 +1,33 @@
+# RentKonnect
+
+> RentKonnect is rent tracking for Kenyan landlords. It bills every tenant automatically on the 1st, records M-Pesa payments the landlord pastes in, applies money to the oldest arrears first, and exports the twelve-month income history a bank asks for. Free while it is getting started.
+
+RentKonnect is a web app, installable on Android and iOS, for landlords managing their own units in Kenya. It is made by Eddie Ezekiel Ochieng.
+
+## What it does
+
+- Bills rent automatically every month; arrears carry forward.
+- Records payments from pasted M-Pesa confirmation messages, matched to tenants by phone number; the same code cannot be recorded twice.
+- Applies part payments to the oldest unpaid month first.
+- Shows each tenant's full statement: billed, paid and balance by month.
+- Writes WhatsApp rent reminders, sent from the landlord's own number.
+- Exports twelve months of collections, costs and average monthly net income as Excel or PDF.
+
+## What it does not do
+
+- It does not connect to M-Pesa or any bank, or collect rent on the landlord's behalf.
+- Tenants do not get a login.
+- It is not accounting or tax software.
+
+## Pricing
+
+Free while getting started. Planned plans: Basic, KSh 400 a month (up to 10 units); Business, KSh 900 a month (units without limit, expenses, bank exports and full history). Landlords already using it keep the price they joined on.
+
+## Pages
+
+- [Home](https://rentkonnect.co.ke/)
+- [About](https://rentkonnect.co.ke/about): what it does and doesn't do.
+- [Help](https://rentkonnect.co.ke/help)
+- [Contact](https://rentkonnect.co.ke/contact)
+- [Privacy](https://rentkonnect.co.ke/privacy)
+- [Terms of Use](https://rentkonnect.co.ke/terms)

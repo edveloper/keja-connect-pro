@@ -42,6 +42,26 @@
       content="Know who has paid, who owes what, and how much you actually made this month."
     />
     <meta name="twitter:image" content="https://rentkonnect.co.ke/og-image.png" />
+
+    <script>
+      /*
+        GA4. Loads only on the production domain, so localhost and preview
+        deploys stay out of the reports. Page changes inside the app are picked
+        up by GA4's enhanced measurement (browser history events).
+      */
+      (function () {
+        if (location.hostname !== 'rentkonnect.co.ke') return;
+        var id = 'G-TV92S1XQCK';
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { window.dataLayer.push(arguments); };
+        window.gtag('js', new Date());
+        window.gtag('config', id);
+      })();
+    </script>
   </head>
 
   <body>

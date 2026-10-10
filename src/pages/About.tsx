@@ -19,12 +19,10 @@ export default function About() {
       <PageContainer title="About" subtitle="What this is, and what it isn't">
         <div className="space-y-6 pb-8 text-sm leading-relaxed">
           <section className="surface-panel p-5 space-y-3">
-            {/*
-              TODO (Eddie): replace this paragraph with your own reason for
-              building it — the specific frustration, the number of units, the
-              estate. One true sentence about where this came from will do more
-              for trust than anything else on the page.
-            */}
+            <p>
+              I built RentKonnect for a family member who works as a landlady. She and her caretaker
+              use it to manage rent and keep track of costs.
+            </p>
             <p>
               Most Kenyan landlords run their units from a notebook or a WhatsApp thread. It
               works until a tenant is three months behind and nobody can agree on what was
@@ -37,7 +35,7 @@ export default function About() {
           </section>
 
           <section>
-            <h2 className="eyebrow mb-3">What it does</h2>
+            <h2 className="eyebrow mb-3">What It Does</h2>
             <dl className="surface-panel divide-y divide-border overflow-hidden">
               {[
                 {
@@ -74,7 +72,7 @@ export default function About() {
           </section>
 
           <section>
-            <h2 className="eyebrow mb-3">What it doesn't do</h2>
+            <h2 className="eyebrow mb-3">What It Doesn't Do</h2>
             <ul className="space-y-2 text-muted-foreground">
               <li>
                 It does not connect to M-Pesa directly. You paste the messages; there is no
@@ -95,7 +93,7 @@ export default function About() {
           </section>
 
           <section className="surface-panel p-5">
-            <h2 className="eyebrow mb-2">Your data</h2>
+            <h2 className="eyebrow mb-2">Your Data</h2>
             <p className="text-muted-foreground">
               Every record is scoped to your account at the database level, not just in the
               app, so no other landlord can read or change your figures. It is never sold or

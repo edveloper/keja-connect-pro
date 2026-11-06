@@ -14,7 +14,7 @@ export default function Terms() {
         />
       </Helmet>
 
-      <PageContainer title="Terms of Use" subtitle="Last updated 10 October 2026">
+      <PageContainer title="Terms of Use" subtitle="Last updated 6 November 2026">
         <div className="space-y-5 pb-8 text-sm leading-relaxed">
           <p>
             These terms apply when you use RentKonnect, which is run by Eddie Ezekiel Ochieng in
@@ -68,8 +68,8 @@ export default function Terms() {
           <p className="text-muted-foreground">
             These terms are governed by the laws of Kenya. If they change in a way that matters, the
             date above will change. Questions go to{" "}
-            <a className="text-foreground underline" href="mailto:eddie.ochieng@usalama-voice.com">
-              eddie.ochieng@usalama-voice.com
+            <a className="text-foreground underline" href="mailto:enquiries@eddie-ezekiel.com">
+              enquiries@eddie-ezekiel.com
             </a>
             .
           </p>

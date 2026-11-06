@@ -40,10 +40,10 @@ export default function Privacy() {
             <p className="text-muted-foreground">
               RentKonnect is run by Eddie Ezekiel Ochieng, in Kenya. For anything on this page,
               write to{" "}
-              <a className="text-foreground underline" href="mailto:eddie.ochieng@usalama-voice.com">
-                eddie.ochieng@usalama-voice.com
+              <a className="text-foreground underline" href="mailto:enquiries@eddie-ezekiel.com">
+                enquiries@eddie-ezekiel.com
               </a>
-              . Last updated 10 October 2026.
+              . Last updated 6 November 2026.
             </p>
           </section>
 

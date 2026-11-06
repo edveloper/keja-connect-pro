@@ -8,8 +8,8 @@ const CONTACT = {
   name: "Eddie Ezekiel Ochieng",
   phone: "0702 931 920",
   whatsapp: "0702931920",
-  email: "ed.veloper10@gmail.com",
-  website: "https://www.eddie-ezekiel.com/",
+  email: "enquiries@eddie-ezekiel.com",
+  website: "https://eddie-ezekiel.com/",
 };
 
 /**

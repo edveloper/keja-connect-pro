@@ -47,7 +47,10 @@ const DialogContent = React.forwardRef<
         //  3. `dvh` rather than `vh`: when a phone keyboard opens, the dynamic
         //     viewport shrinks but `vh` does not, so a centred dialog put its
         //     lower fields underneath the keyboard. `dvh` tracks the keyboard.
-        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-1.5rem)] max-w-lg",
+        //  4. Grid children will not shrink below their widest line by default,
+        //     so one long row (a payment line meant to truncate) widened the
+        //     whole column past the right edge. `min-w-0` lets them shrink.
+        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-1.5rem)] max-w-lg [&>*]:min-w-0",
         "translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background",
         "p-5 sm:p-6 shadow-lg duration-200",
         "max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain",

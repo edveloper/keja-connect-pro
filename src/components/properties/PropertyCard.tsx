@@ -96,14 +96,19 @@ export function PropertyCard({
     return { occupied, rentRoll, arrears, vacant: propertyUnits.length - occupied };
   }, [propertyUnits, occupantsByUnit]);
 
-  const locationLine = [
-    property.street_address || property.address,
+  // The legacy `address` is built from these same fields when they exist, so it
+  // is only used for older properties that have none of them. A town and county
+  // with the same name (Nairobi, Mombasa) are shown once.
+  const locationParts = [
+    property.street_address,
     property.neighborhood,
     property.town_city,
     property.county,
   ]
     .map((v) => v?.trim())
-    .filter(Boolean)
+    .filter((v): v is string => Boolean(v));
+  const locationLine = (locationParts.length > 0 ? locationParts : [property.address?.trim() ?? ""])
+    .filter((v, i, all) => v && all.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i)
     .join(", ");
 
   return (

@@ -14,8 +14,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { LogOut, Smartphone, Archive, HelpCircle, Shield, Mail, ListChecks } from "lucide-react";
+import { LogOut, Smartphone, Archive, HelpCircle, Shield, Mail, ListChecks, Trash2 } from "lucide-react";
 import { OnboardingImportPanel } from "@/components/settings/OnboardingImportPanel";
+import { DeleteAccountPanel } from "@/components/settings/DeleteAccountPanel";
 import { useLandlordSettings, useSaveLandlordSettings } from "@/hooks/useLandlordSettings";
 import { useSetupStatus } from "@/hooks/useSetupStatus";
 import { ShowMore, useProgressiveList } from "@/components/ui/show-more";
@@ -30,6 +31,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const [email, setEmail] = useState<string | null>(null);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data: settings, isLoading: settingsLoading } = useLandlordSettings();
   const saveSettings = useSaveLandlordSettings();
@@ -193,7 +195,7 @@ export default function Settings() {
               <span className="truncate">{email ?? "Signed in"}</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Your data is isolated at the database level — no other landlord can read or
+              Your data is kept apart at the database level, so no other landlord can read or
               change your records.
             </p>
             <Button
@@ -204,6 +206,18 @@ export default function Settings() {
               <LogOut className="h-4 w-4 mr-2" />
               Sign out
             </Button>
+            {deleteOpen ? (
+              <DeleteAccountPanel onCancel={() => setDeleteOpen(false)} />
+            ) : (
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground hover:text-destructive"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Account
+              </Button>
+            )}
           </div>
         </section>
 

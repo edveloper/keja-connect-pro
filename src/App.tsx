@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import Landing from "./pages/Landing";
 import Terms from "./pages/Terms";
+import DeleteAccount from "./pages/DeleteAccount";
 
 
 // Pages (Private)
@@ -117,6 +118,7 @@ const App = () => {
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/delete-account" element={<DeleteAccount />} />
             <Route path="/auth" element={!session ? <AuthPage /> : <Navigate to="/" replace />} />
 
             {session ? (

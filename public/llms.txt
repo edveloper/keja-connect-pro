@@ -31,6 +31,7 @@ Free while getting started. Planned plans: Basic, KSh 400 a month (up to 10 unit
 - [Contact](https://rentkonnect.co.ke/contact)
 - [Privacy](https://rentkonnect.co.ke/privacy)
 - [Terms of Use](https://rentkonnect.co.ke/terms)
+- [Delete Your Account](https://rentkonnect.co.ke/delete-account): how to delete an account and every record in it.
 
 ## Contact
 

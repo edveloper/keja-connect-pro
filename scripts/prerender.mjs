@@ -3,7 +3,7 @@
 // gives it that page's head tags and rendered content, and writes it to dist/.
 //
 //   dist/index.html   landing page (also the app's shell for signed-in users)
-//   dist/<page>.html  about, help, contact, privacy, terms (vercel.json: cleanUrls)
+//   dist/<page>.html  about, help, contact, privacy, terms, delete-account (vercel.json: cleanUrls)
 //   dist/404.html     served with a 404 status for unknown paths
 //   dist/app.html     bare shell, noindex: sign-in and signed-in pages rewrite to it
 import fs from "node:fs";

@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 /**
  * Written as prose rather than six icon-and-numbered-heading cards.
@@ -43,7 +43,7 @@ export default function Privacy() {
               <a className="text-foreground underline" href="mailto:enquiries@eddie-ezekiel.com">
                 enquiries@eddie-ezekiel.com
               </a>
-              . Last updated 6 November 2026.
+              . Last updated 10 November 2026.
             </p>
           </section>
 
@@ -103,7 +103,13 @@ export default function Privacy() {
             <p className="text-muted-foreground">
               Moving a tenant out keeps their history so your past months still add up.
               Deleting a tenant erases them and everything attached to them, permanently and
-              immediately. If you want your whole account removed, ask and it will be done.
+              immediately. You can delete your whole account yourself from Settings, and every
+              record in it goes with it. The steps, and what to do if you cannot sign in, are on
+              the{" "}
+              <Link to="/delete-account" className="text-foreground underline">
+                Delete Your Account
+              </Link>{" "}
+              page.
             </p>
           </section>
 

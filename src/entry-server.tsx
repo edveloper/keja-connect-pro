@@ -16,6 +16,7 @@ import Help from "./pages/Help";
 import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import DeleteAccount from "./pages/DeleteAccount";
 import NotFound from "./pages/NotFound";
 
 export const SITE_URL = "https://rentkonnect.co.ke";
@@ -28,6 +29,7 @@ export const PUBLIC_PAGES = [
   { path: "/contact", file: "contact.html", Page: Contact },
   { path: "/privacy", file: "privacy.html", Page: Privacy },
   { path: "/terms", file: "terms.html", Page: Terms },
+  { path: "/delete-account", file: "delete-account.html", Page: DeleteAccount },
   { path: "/404", file: "404.html", Page: NotFound, noindex: true },
 ] as const;
 
